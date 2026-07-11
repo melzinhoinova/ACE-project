@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { TopBar } from "@/components/ace/TopBar";
 import { generateCampaignVariants, DEFAULT_HOLIDAY } from "@/lib/ace-mock";
 import { ArrowLeft, ArrowRight, Calendar, Camera, Loader2, MessageCircle, Shield, Tag, Users, Zap } from "lucide-react";
@@ -24,22 +24,30 @@ export default function AprovarPage() {
   const [autonomous, setAutonomous] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  const [holiday] = useState<any>(() => {
-    if (typeof window === "undefined") return DEFAULT_HOLIDAY;
-    const stored = sessionStorage.getItem("ace.selectedHoliday");
-    if (stored) { try { return JSON.parse(stored); } catch { /* empty */ } }
-    return DEFAULT_HOLIDAY;
-  });
+  // 1. Inicialize sempre com o valor padrão (igual para o servidor e cliente)
+  const [holiday, setHoliday] = useState<any>(DEFAULT_HOLIDAY);
+  const [variantIndex, setVariantIndex] = useState<number>(0);
+  const [uploaded, setUploaded] = useState<string | null>(null);
 
-  const [variantIndex] = useState<number>(() => {
-    if (typeof window === "undefined") return 0;
-    const stored = sessionStorage.getItem("ace.variant");
-    return stored ? Number(stored) : 0;
-  });
+  // 2. Use o useEffect para buscar as coisas do navegador APÓS a página carregar
+  useEffect(() => {
+    // Esse código só roda no navegador, garantindo que o servidor não veja
+    const storedHoliday = sessionStorage.getItem("ace.selectedHoliday");
+    if (storedHoliday) {
+      try { setHoliday(JSON.parse(storedHoliday)); } catch { /* ... */ }
+    }
 
+    const storedVariant = sessionStorage.getItem("ace.variant");
+    if (storedVariant) setVariantIndex(Number(storedVariant));
+
+    const storedImg = sessionStorage.getItem("ace.uploadedImage");
+    if (storedImg) setUploaded(storedImg);
+  }, []);
+  
   const activeVariant = useMemo(() => {
     const generated = generateCampaignVariants(holiday);
     return generated[variantIndex] || generated[0];
+
   }, [holiday, variantIndex]);
 
   const preHolidayDate = useMemo(() => {
@@ -54,9 +62,64 @@ export default function AprovarPage() {
     } catch { return holiday.data; }
   }, [holiday.data]);
 
-  const activate = () => {
+  const activate = async () => {
     setLoading(true);
-    setTimeout(() => router.push("/feed"), 1100);
+
+    const caption = activeVariant?.copy || "Nova campanha gerada!";
+    const base64Image = typeof window !== "undefined" ? sessionStorage.getItem("ace.uploadedImage") : null;
+    
+    let imageUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000"; 
+
+    try {
+      if (base64Image) {
+      // Remove o cabeçalho do Base64 (ex: "data:image/jpeg;base64,") que o ImgBB não quer
+        const cleanBase64 = base64Image.split(",")[1];
+
+        const formData = new FormData();
+        formData.append("image", cleanBase64);
+        formData.append("expiration", "300"); 
+
+        const IMGBB_API_KEY = "1edae988cc5158d6f11411a8c6074193"; 
+
+        const imgbbResponse = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const imgbbData = await imgbbResponse.json();
+
+        if (imgbbResponse.ok && imgbbData.data?.url) {
+          // Substitui a imagem padrão pela URL pública gerada para o seu arquivo!
+          imageUrl = imgbbData.data.url;
+          console.log("Imagem hospedada com sucesso no ImgBB:", imageUrl);
+        } else {
+          throw new Error("Falha ao hospedar a imagem no ImgBB.");
+        }
+      }
+
+      // 2. Envia a URL pública REAL e a LEGENDA DA IA para o seu servidor Python
+      const response = await fetch("http://127.0.0.1:8000/api/instagram/postar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl,
+          caption
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        router.push("/feed");
+      } else {
+        setLoading(false);
+      }
+    } catch (error: any) {
+      alert(`Erro no processo: ${error.message || "Verifique a conexão com o Python"}`);
+      setLoading(false);
+    }
   };
 
   return (
