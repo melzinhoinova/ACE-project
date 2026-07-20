@@ -1,5 +1,8 @@
+from typing import Optional
+
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import mapped_column
 
 
@@ -15,5 +18,17 @@ class Opportunity(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str]
-    description: Mapped[str]
+    description: Mapped[Optional[str]]
     date: Mapped[str]
+
+# modelo da tabela de campanhas antigas
+class Campaign(Base):
+
+    __tablename__ = "campaigns"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str]
+    campaign: Mapped[str]
+    description: Mapped[Optional[str]]
+    date: Mapped[str]
+    id_opportunity: Mapped[int] = mapped_column(ForeignKey("opportunities.id"))
