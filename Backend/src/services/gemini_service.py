@@ -17,7 +17,7 @@ os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
 os.environ.pop("GOOGLE_API_KEY", None)
 client = genai.Client(api_key=os.getenv("GEMINI_KEY"))
 
-def connect_gemini(
+def gemini_response(
         nicho: str,
         objetivo: str,
         image_bytes: bytes | None
@@ -33,7 +33,8 @@ def connect_gemini(
         de alta conversão para o Instagram.
         Nicho do cliente: {nicho}
         Objetivo da campanha: {objetivo}
-        No campo 'sugestao_prompt_imagem', descreva um cenário publicitário profissional (ex: 'on a minimalist wooden table with soft studio lighting, bokeh background') em INGLÊS, adequado para este produto.
+        No campo 'sugestao_prompt_imagem', crie tópicos objetivos e estruturados pra um cenário publicitário profissional (ex: 'instagram post, on a minimalist wooden table, soft studio lighting, bokeh background') em INGLÊS, adequado para este produto, e seja breve.
+        Economize o prompt gerado para gastar o mínimo com tokens enquanto mantém a qualidade do que foi requisitado.
         """
 
         conteudo_gemini = [pil_image, prompt_sistema]
@@ -44,7 +45,8 @@ def connect_gemini(
         conceitual de alta conversão para o Instagram com base nas informações abaixo.
         Nicho do cliente: {nicho}
         Objetivo da campanha: {objetivo}
-        No campo 'sugestao_prompt_imagem', descreva um cenário publicitário profissional (ex: 'on a minimalist wooden table with soft studio lighting, bokeh background') em INGLÊS, imaginando um produto ideal para esta campanha.
+        No campo 'sugestao_prompt_imagem', crie tópicos objetivos e estruturados pra um cenário publicitário profissional (ex: 'instagram post, on a minimalist wooden table, soft studio lighting, bokeh background') em INGLÊS, imaginando um produto ideal para esta campanha, e seja breve.
+        Economize o prompt gerado para gastar o mínimo com tokens enquanto mantém a qualidade do que foi requisitado.
         """
 
         conteudo_gemini = [prompt_sistema]
@@ -63,8 +65,4 @@ def connect_gemini(
 
     dados_campanha = json.loads(response.text)
 
-    return {
-        "status": "sucesso",
-        "campanha": dados_campanha,
-        "mensagem": "Campanha gerada com sucesso!"
-    }
+    return dados_campanha
