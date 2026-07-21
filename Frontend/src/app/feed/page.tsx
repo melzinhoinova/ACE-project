@@ -58,71 +58,8 @@ function InstagramMock({ variant, uploaded }: { variant: any; uploaded: string |
   );
 }
 
-function WhatsappMock({ holiday, variant }: { holiday: any; variant: any }) {
-  if (!holiday || !variant) return null;
-  return (
-    <div className="bg-[#0b141a] text-white">
-      <div className="flex items-center gap-2 bg-[#1f2c33] px-3 py-2.5">
-        <div className="h-8 w-8 rounded-full bg-gradient-brand grid place-items-center text-[10px] font-bold">GN</div>
-        <div className="text-xs">
-          <div className="font-semibold">Grupo Nexus Vendas</div>
-          <div className="text-[10px] text-white/60">online</div>
-        </div>
-      </div>
-      <div className="space-y-2 p-3" style={{ backgroundImage: "radial-gradient(circle at 20% 0%, rgba(123,47,190,0.08), transparent 60%)", minHeight: 340 }}>
-        <div className="ml-auto max-w-[80%] rounded-2xl rounded-tr-sm bg-[#005c4b] p-2.5 text-xs leading-relaxed">
-          Olá, Maria! {variant.art.icon} Temos uma oferta especial para você no {holiday.nome}.
-          <div className="mt-2 rounded-xl bg-black/30 p-2">
-            <div className="text-[10px] uppercase tracking-widest text-white/60">Cupom exclusivo</div>
-            <div className="text-base font-bold text-gradient-brand">{variant.coupon}</div>
-            <div className="text-[10px] text-white/70">{variant.discount} · válido até {holiday.data}</div>
-          </div>
-          <div className="mt-1 flex items-center justify-end gap-1 text-[9px] text-white/70">
-            09:01 <CheckCheck size={12} className="text-[#53bdeb]" />
-          </div>
-        </div>
-        <div className="ml-auto max-w-[60%] rounded-2xl rounded-tr-sm bg-[#005c4b] p-2.5 text-xs">
-          Quer ver as sugestões mais amadas? 💝
-          <div className="mt-1 flex items-center justify-end gap-1 text-[9px] text-white/70">
-            09:01 <CheckCheck size={12} className="text-[#53bdeb]" />
-          </div>
-        </div>
-        <div className="text-center text-[10px] text-white/40">Enviado para {holiday.audience?.toLocaleString("pt-BR")} contatos</div>
-      </div>
-    </div>
-  );
-}
-
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick} className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition ${active ? "bg-gradient-brand text-white" : "text-muted-foreground hover:text-foreground"}`}>
-      {children}
-    </button>
-  );
-}
-
-function Stat({ label, value, sub, ok, pulse }: { label: string; value: string; sub: string; ok?: boolean; pulse?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
-        {ok && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[oklch(0.74_0.18_145)]"><Check size={10} /> OK</span>}
-        {pulse && (
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gradient-brand opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-gradient-brand" />
-          </span>
-        )}
-      </div>
-      <div className="mt-2 text-2xl font-extrabold">{value}</div>
-      <div className="text-xs text-muted-foreground">{sub}</div>
-    </div>
-  );
-}
-
 export default function FeedPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"ig" | "wa">("ig");
   const [variantIdx, setVariantIdx] = useState(0);
   const [uploaded, setUploaded] = useState<string | null>(null);
 
@@ -146,8 +83,7 @@ export default function FeedPage() {
   }, []);
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
+    <TopBar>
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -164,24 +100,12 @@ export default function FeedPage() {
           </button>
         </div>
 
-        <div className="mt-8 inline-flex rounded-full border border-border/60 bg-card/40 p-1">
-          <TabBtn active={tab === "ig"} onClick={() => setTab("ig")}><Camera size={14} /> Instagram</TabBtn>
-          <TabBtn active={tab === "wa"} onClick={() => setTab("wa")}><MessageCircle size={14} /> WhatsApp</TabBtn>
-        </div>
-
-        <div className="mt-8 grid grid-cols-1 items-start gap-8 lg:grid-cols-2">
-          <div key={tab} className="animate-float-up">
-            <PhoneFrame>
-              {tab === "ig" ? <InstagramMock variant={activeVariant} uploaded={uploaded} /> : <WhatsappMock holiday={holiday} variant={activeVariant} />}
-            </PhoneFrame>
-          </div>
-          <div className="space-y-4">
-            <Stat label="Status" value={tab === "ig" ? "Publicado" : "Enviado"} sub={tab === "ig" ? "Post + 3 Stories" : `${holiday.audience?.toLocaleString("pt-BR")} destinatários`} ok />
-            <Stat label="Engajamento inicial" value={tab === "ig" ? "2.847 curtidas" : "412 leituras"} sub="primeiros 2 minutos" />
-            <Stat label="Cliques no cupom" value="87" sub="e subindo em tempo real" pulse />
-          </div>
+        <div className="mt-12 flex justify-center animate-float-up">
+          <PhoneFrame>
+            <InstagramMock variant={activeVariant} uploaded={uploaded} />
+          </PhoneFrame>
         </div>
       </main>
-    </div>
+    </TopBar>
   );
 }

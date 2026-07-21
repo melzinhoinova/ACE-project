@@ -126,8 +126,7 @@ export default function GeradorPage() {
   const v = variants[variant] || variants[0];
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
+    <TopBar>
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -149,11 +148,6 @@ export default function GeradorPage() {
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">{holiday.nome} · {holiday.data}</p>
           </div>
-          {stage === "ready" && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-brand-soft px-3 py-1.5 text-xs font-semibold">
-              <Sparkles size={12} /> Gerado por IA em 4 segundos
-            </span>
-          )}
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -225,7 +219,6 @@ export default function GeradorPage() {
               <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Canais selecionados</div>
               <div className="space-y-3">
                 <ChannelToggle icon={<Camera size={18} />} label="Instagram" detail="Post no feed + Stories" on={igOn} onChange={setIgOn} />
-                <ChannelToggle icon={<MessageCircle size={18} />} label="WhatsApp" detail="Mensagem personalizada" on={waOn} onChange={setWaOn} />
               </div>
             </div>
 
@@ -242,6 +235,6 @@ export default function GeradorPage() {
           </div>
         </div>
       </main>
-    </div>
+    </TopBar>
   );
 }

@@ -123,8 +123,7 @@ export default function AprovarPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
+    <TopBar>
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs text-muted-foreground">
           Etapa 3 de 4 · Aprovação
@@ -143,7 +142,7 @@ export default function AprovarPage() {
               <SummaryRow icon={<Calendar size={16} />} label="Data" value={`${holiday.nome} — ${holiday.data}`} />
               <SummaryRow icon={<Users size={16} />} label="Alcance estimado" value={`${holiday.audience?.toLocaleString("pt-BR")} contatos`} />
               <SummaryRow icon={<Camera size={16} />} label="Canal 1" value="Instagram — Post + Stories" />
-              <SummaryRow icon={<MessageCircle size={16} />} label="Canal 2" value="WhatsApp — Mensagem personalizada" />
+              <SummaryRow icon={<MessageCircle size={16} />} label="Canal 2" value="WhatsApp — Message personalizada" />
               <SummaryRow icon={<Tag size={16} />} label="Desconto" value={`${activeVariant.discount} · Cupom ${activeVariant.coupon}`} />
             </div>
           </div>
@@ -190,6 +189,6 @@ export default function AprovarPage() {
           </div>
         </div>
       </main>
-    </div>
+    </TopBar>
   );
 }

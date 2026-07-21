@@ -68,52 +68,52 @@
 
 :root {
   --radius: 1rem;
-  /* Dark by default — ACE only ships dark mode */
-  --background: oklch(0.13 0.03 280);
-  --foreground: oklch(0.97 0.01 270);
-  --card: oklch(0.18 0.04 278);
-  --card-foreground: oklch(0.97 0.01 270);
-  --popover: oklch(0.18 0.04 278);
-  --popover-foreground: oklch(0.97 0.01 270);
-  --primary: oklch(0.62 0.22 295);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.24 0.05 278);
-  --secondary-foreground: oklch(0.97 0.01 270);
-  --muted: oklch(0.22 0.04 278);
-  --muted-foreground: oklch(0.72 0.03 270);
-  --accent: oklch(0.58 0.2 260);
-  --accent-foreground: oklch(0.99 0 0);
+  /* Dark Amburana & Café Theme (High Contrast Option) */
+  --background: oklch(0.18 0.02 55);
+  --foreground: oklch(0.97 0.01 60);
+  --card: oklch(0.24 0.02 55);
+  --card-foreground: oklch(0.97 0.01 60);
+  --popover: oklch(0.24 0.02 55);
+  --popover-foreground: oklch(0.97 0.01 60);
+  --primary: oklch(0.75 0.15 60);
+  --primary-foreground: oklch(0.18 0.02 55);
+  --secondary: oklch(0.27 0.02 55);
+  --secondary-foreground: oklch(0.97 0.01 60);
+  --muted: oklch(0.25 0.02 55);
+  --muted-foreground: oklch(0.80 0.01 60);
+  --accent: oklch(0.27 0.02 55);
+  --accent-foreground: oklch(0.97 0.01 60);
   --destructive: oklch(0.62 0.24 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.62 0.22 295);
-  --chart-1: oklch(0.62 0.22 295);
+  --destructive-foreground: oklch(0.97 0.01 60);
+  --border: oklch(1 0.05 60 / 18%);
+  --input: oklch(1 0.05 60 / 18%);
+  --ring: oklch(0.75 0.15 60);
+  --chart-1: oklch(0.75 0.15 60);
   --chart-2: oklch(0.58 0.2 260);
   --chart-3: oklch(0.7 0.18 200);
   --chart-4: oklch(0.75 0.17 145);
   --chart-5: oklch(0.7 0.2 30);
-  --sidebar: oklch(0.16 0.04 278);
-  --sidebar-foreground: oklch(0.97 0.01 270);
-  --sidebar-primary: oklch(0.62 0.22 295);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.24 0.05 278);
-  --sidebar-accent-foreground: oklch(0.97 0.01 270);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.62 0.22 295);
+  --sidebar: oklch(0.22 0.02 55);
+  --sidebar-foreground: oklch(0.97 0.01 60);
+  --sidebar-primary: oklch(0.75 0.15 60);
+  --sidebar-primary-foreground: oklch(0.12 0.02 55);
+  --sidebar-accent: oklch(0.22 0.02 55);
+  --sidebar-accent-foreground: oklch(0.97 0.01 60);
+  --sidebar-border: oklch(1 0.05 60 / 18%);
+  --sidebar-ring: oklch(0.75 0.15 60);
 
-  --success: oklch(0.74 0.18 145);
+  --success: oklch(0.6 0.15 140);
   --warning: oklch(0.82 0.17 85);
   --danger: oklch(0.65 0.24 27);
   --brand-purple: oklch(0.55 0.24 305);
-  --brand-blue: oklch(0.58 0.2 250);
+  --brand-blue: oklch(0.75 0.15 60); /* Amber */
 
-  --gradient-brand: linear-gradient(135deg, #7B2FBE 0%, #2F6FBE 100%);
-  --gradient-brand-soft: linear-gradient(135deg, oklch(0.55 0.24 305 / 0.18), oklch(0.58 0.2 250 / 0.18));
-  --gradient-bg: radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.55 0.24 305 / 0.15), transparent 60%),
-                 radial-gradient(ellipse 70% 50% at 90% 30%, oklch(0.58 0.2 250 / 0.12), transparent 60%),
-                 oklch(0.09 0.03 280);
-  --shadow-glow: 0 0 0 1px oklch(0.62 0.22 295 / 0.4), 0 20px 60px -10px oklch(0.55 0.24 305 / 0.35);
+  --gradient-brand: linear-gradient(135deg, oklch(0.75 0.15 60) 0%, oklch(0.65 0.15 50) 100%);
+  --gradient-brand-soft: linear-gradient(135deg, oklch(0.75 0.15 60 / 0.15), oklch(0.65 0.15 50 / 0.15));
+  --gradient-bg: radial-gradient(ellipse 80% 60% at 20% 0%, oklch(0.75 0.15 60 / 0.08), transparent 60%),
+                 radial-gradient(ellipse 70% 50% at 90% 30%, oklch(0.6 0.15 140 / 0.05), transparent 60%),
+                 var(--background);
+  --shadow-glow: 0 0 0 1px oklch(0.75 0.15 60 / 0.2), 0 20px 60px -10px oklch(0.75 0.15 60 / 0.15);
   --shadow-card: 0 8px 32px -8px oklch(0 0 0 / 0.5);
 }
 
