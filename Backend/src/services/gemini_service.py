@@ -33,8 +33,7 @@ def gemini_response(
         de alta conversão para o Instagram.
         Nicho do cliente: {nicho}
         Objetivo da campanha: {objetivo}
-        No campo 'sugestao_prompt_imagem', crie tópicos objetivos e estruturados pra um cenário publicitário profissional (ex: 'instagram post, on a minimalist wooden table, soft studio lighting, bokeh background') em INGLÊS, adequado para este produto, e seja breve.
-        Economize o prompt gerado para gastar o mínimo com tokens enquanto mantém a qualidade do que foi requisitado.
+        No campo 'sugestao_prompt_imagem', descreva um cenário publicitário profissional (ex: 'on a minimalist wooden table with soft studio lighting, bokeh background') em INGLÊS, adequado para este produto.
         """
 
         conteudo_gemini = [pil_image, prompt_sistema]
@@ -45,8 +44,7 @@ def gemini_response(
         conceitual de alta conversão para o Instagram com base nas informações abaixo.
         Nicho do cliente: {nicho}
         Objetivo da campanha: {objetivo}
-        No campo 'sugestao_prompt_imagem', crie tópicos objetivos e estruturados pra um cenário publicitário profissional (ex: 'instagram post, on a minimalist wooden table, soft studio lighting, bokeh background') em INGLÊS, imaginando um produto ideal para esta campanha, e seja breve.
-        Economize o prompt gerado para gastar o mínimo com tokens enquanto mantém a qualidade do que foi requisitado.
+        No campo 'sugestao_prompt_imagem', descreva um cenário publicitário profissional (ex: 'on a minimalist wooden table with soft studio lighting, bokeh background') em INGLÊS, imaginando um produto ideal para esta campanha.
         """
 
         conteudo_gemini = [prompt_sistema]
