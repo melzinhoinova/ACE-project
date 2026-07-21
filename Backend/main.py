@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.router.database_router import router as db_router
 from src.router.ai_router import router as ai_router
-from ServerMeta.main import router as meta_router
+from src.ServerMeta.main import router as meta_router
 
 app = FastAPI(title="API Principal com Banco e Meta")
 
