@@ -9,7 +9,7 @@ import os
 import io
 import json
 
-from src.models.api_models import CampanhaMarketing
+from src.models.api_models import GeminiPromptModel
 
 load_dotenv()
 
@@ -57,7 +57,7 @@ def gemini_response(
         contents=conteudo_gemini,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=CampanhaMarketing
+            response_schema=GeminiPromptModel
         )
     )
 

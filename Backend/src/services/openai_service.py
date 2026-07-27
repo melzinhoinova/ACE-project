@@ -17,7 +17,6 @@ def openai_response(prompt: str) -> str:
         prompt=prompt,
         n=1,
         quality="medium",
-        size="1080x1350"
     )
 
     image_base64: str = result.data[0].b64_json
