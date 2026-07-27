@@ -17,6 +17,7 @@ def openai_response(prompt: str) -> str:
         quality="medium",      # 'low', 'medium', 'high' ou 'auto'
         size="1024x1024",
         output_format="jpeg",   # 'png', 'webp' ou 'jpeg' (NÃO inclua response_format)
+
     )
 
     # O gpt-image-2 sempre entrega a string base64 direto em .b64_json
