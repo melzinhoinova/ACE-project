@@ -29,12 +29,12 @@ export default function SplashPage() {
     <main className="relative min-h-screen overflow-hidden">
       {/* animated background blobs */}
       <div className="pointer-events-none absolute inset-0 -z-0">
-        <div className="absolute -left-32 top-10 h-[480px] w-[480px] rounded-full bg-[#7B2FBE]/30 blur-[120px] animate-pulse" />
+        <div className="absolute -left-16 top-10 h-[60vw] w-[60vw] max-h-[480px] max-w-[480px] rounded-full bg-primary/15 blur-[100px] animate-pulse" />
         <div
-          className="absolute right-0 top-1/3 h-[520px] w-[520px] rounded-full bg-[#2F6FBE]/30 blur-[120px] animate-pulse"
+          className="absolute right-0 top-1/3 h-[70vw] w-[70vw] max-h-[520px] max-w-[520px] rounded-full bg-primary/20 blur-[100px] animate-pulse"
           style={{ animationDelay: "1.2s" }}
         />
-        <div className="absolute bottom-0 left-1/3 h-[360px] w-[360px] rounded-full bg-fuchsia-500/20 blur-[100px] animate-pulse" />
+        <div className="absolute bottom-0 left-1/4 h-[50vw] w-[50vw] max-h-[360px] max-w-[360px] rounded-full bg-success/10 blur-[90px] animate-pulse" />
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-12 text-center">
@@ -51,7 +51,7 @@ export default function SplashPage() {
         </div>
 
         <h1
-          className="mt-8 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl animate-float-up"
+          className="mt-8 text-4xl font-extrabold leading-tight tracking-tight text-foreground sm:text-5xl animate-float-up"
           style={{ animationDelay: "120ms" }}
         >
           Venda mais.
@@ -72,7 +72,7 @@ export default function SplashPage() {
           <button
             onClick={() => go("google")}
             disabled={loading !== null}
-            className="group relative inline-flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-white text-sm font-semibold text-zinc-900 shadow-card transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70"
+            className="group relative inline-flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-primary text-sm font-semibold text-amber-950 shadow-card transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70"
           >
             {loading === "google" ? <Loader2 size={18} className="animate-spin" /> : <GoogleIcon />}
             Entrar com Google
@@ -80,7 +80,7 @@ export default function SplashPage() {
           <button
             onClick={() => go("email")}
             disabled={loading !== null}
-            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card/40 text-sm font-semibold text-foreground backdrop-blur transition hover:bg-card/70 disabled:opacity-70"
+            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-card/60 text-sm font-semibold text-foreground backdrop-blur transition hover:bg-card/80 disabled:opacity-70"
           >
             {loading === "email" ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
             Acessar com e-mail

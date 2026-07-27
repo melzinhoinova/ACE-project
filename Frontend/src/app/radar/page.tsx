@@ -32,7 +32,7 @@ const SCOPE_LABEL: Record<Holiday["escopo"], string> = {
   municipal: "Municipal",
 };
 const SCOPE_STYLE: Record<Holiday["escopo"], string> = {
-  nacional: "bg-white/10 text-foreground/90 border-white/15",
+  nacional: "bg-card text-foreground border-border",
   estadual: "bg-[oklch(0.70_0.18_240/0.15)] text-[oklch(0.85_0.14_240)] border-[oklch(0.70_0.18_240/0.35)]",
   municipal: "bg-[oklch(0.74_0.18_145/0.15)] text-[oklch(0.85_0.16_145)] border-[oklch(0.74_0.18_145/0.35)]",
 };
@@ -158,8 +158,7 @@ export default function RadarPage() {
   }, [hot, monthOffset]);
 
   return (
-    <div className="min-h-screen">
-      <TopBar />
+    <TopBar>
       <main className="mx-auto max-w-7xl px-6 py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="animate-float-up">
@@ -168,10 +167,10 @@ export default function RadarPage() {
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Calendário de oportunidades de campanha</p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[oklch(0.74_0.18_145/0.35)] bg-[oklch(0.74_0.18_145/0.10)] px-3 py-1.5 text-xs font-medium text-[oklch(0.74_0.18_145)]">
+          <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success animate-float-up">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[oklch(0.74_0.18_145)] opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[oklch(0.74_0.18_145)]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
             </span>
             <Zap size={12} />
             {holidays.length} oportunidades de campanhas carregadas
@@ -239,7 +238,7 @@ export default function RadarPage() {
           </div>
         )}
       </main>
-    </div>
+    </TopBar>
   );
 }
 
@@ -248,7 +247,7 @@ function FeaturedCard({ selected, isHot }: { selected: Enriched; isHot: boolean 
     <div className="relative mt-8">
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-brand opacity-20 blur-3xl" />
       <div className="border-gradient-brand rounded-3xl p-7 sm:p-9 card-surface">
-        <div className="inline-flex items-center gap-2 rounded-full bg-[oklch(0.70_0.22_25/0.15)] px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[oklch(0.78_0.18_25)]">
+        <div className="inline-flex items-center gap-2 rounded-full bg-danger/10 border border-danger/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-danger">
           <Flame size={12} />
           {isHot ? "Oportunidade em alta agora" : "Oportunidade selecionada"}
         </div>
@@ -312,13 +311,13 @@ function CalendarGrid({
           {MONTH_NAMES[month]} {year}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onPrev} className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 hover:bg-white/5" aria-label="Mês anterior">
+          <button onClick={onPrev} className="grid h-9 w-9 place-items-center rounded-lg border border-border/80 hover:bg-card/80" aria-label="Mês anterior">
             <ChevronLeft size={16} />
           </button>
-          <button onClick={onToday} className="rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium hover:bg-white/5">
+          <button onClick={onToday} className="rounded-lg border border-border/80 px-3 py-1.5 text-xs font-medium hover:bg-card/80">
             Hoje
           </button>
-          <button onClick={onNext} className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 hover:bg-white/5" aria-label="Próximo mês">
+          <button onClick={onNext} className="grid h-9 w-9 place-items-center rounded-lg border border-border/80 hover:bg-card/80" aria-label="Próximo mês">
             <ChevronRight size={16} />
           </button>
         </div>
@@ -337,7 +336,7 @@ function CalendarGrid({
           const base = "aspect-square rounded-lg p-1.5 text-left transition";
           if (!h) {
             return (
-              <div key={i} className={`${base} border border-white/5 text-xs text-muted-foreground ${isToday ? "ring-1 ring-white/40" : ""}`}>
+              <div key={i} className={`${base} border border-border/40 text-xs text-muted-foreground ${isToday ? "ring-1 ring-border/80" : ""}`}>
                 {day}
               </div>
             );
@@ -346,7 +345,7 @@ function CalendarGrid({
             <button
               key={i}
               onClick={() => onSelect(h.id)}
-              className={`${base} border hover:scale-[1.03] ${scoreBg(h.score)} ${isSelected ? "border-gradient-brand bg-white/10" : ""} ${isToday ? "ring-1 ring-white/40" : ""}`}
+              className={`${base} border hover:scale-[1.03] ${scoreBg(h.score)} ${isSelected ? "border-primary bg-card" : ""} ${isToday ? "ring-1 ring-border/80" : ""}`}
               title={h.nome}
             >
               <div className="flex items-start justify-between">
@@ -385,7 +384,7 @@ function UpcomingList({
             <button
               key={h.id}
               onClick={() => onSelect(h.id)}
-              className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition hover:bg-white/5 ${active ? "border-gradient-brand bg-white/5" : "border-white/5"}`}
+              className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition hover:bg-card/80 ${active ? "border-primary bg-card/60" : "border-border/30"}`}
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 truncate text-sm font-medium">

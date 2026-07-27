@@ -121,8 +121,7 @@ export default function DashboardSucessoPage() {
   }, [dadosGeral]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-brand/20">
-      <TopBar />
+    <TopBar>
       <main className="mx-auto max-w-6xl px-6 py-10 space-y-10">
         
         {/* Header Principal */}
@@ -222,8 +221,7 @@ export default function DashboardSucessoPage() {
               </div>
 
               {/* DASHBOARD LAYOUT MIX */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
+              <div className="md:grid-cols-3 gap-6">
                 {/* Central Informativa de Comentários */}
                 <div className="md:col-span-2 rounded-3xl border border-border/60 bg-card p-6 shadow-card flex flex-col justify-between animate-float-up" style={{ animationDelay: '300ms' }}>
                   <div>
@@ -254,25 +252,6 @@ export default function DashboardSucessoPage() {
                       )}
                     </div>
                   </div>
-                </div>
-
-                {/* Card Lateral de Saúde da Mídia */}
-                <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card flex flex-col justify-between animate-float-up" style={{ animationDelay: '400ms' }}>
-                  <div className="space-y-4">
-                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                      <Activity size={14} /> Retenção & Saúde
-                    </div>
-                    <div className="text-center py-6">
-                      <div className="inline-flex items-center justify-center rounded-full bg-gradient-brand-soft h-28 w-28 text-3xl font-black text-brand border border-brand/20 shadow-inner">
-                        {taxaEngajamento}%
-                      </div>
-                      <h4 className="mt-4 font-bold text-sm">Taxa de Conversão</h4>
-                      <p className="text-xs text-muted-foreground mt-1 px-2">
-                        Porcentagem de interações ativas baseadas nas contas que visualizaram.
-                      </p>
-                    </div>
-                  </div>
-                  
                 </div>
 
               </div>
@@ -330,6 +309,6 @@ export default function DashboardSucessoPage() {
           </div>
         </div>
       )}
-    </div>
+    </TopBar>
   );
 }
