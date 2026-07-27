@@ -24,14 +24,13 @@ export default function AprovarPage() {
   const [autonomous, setAutonomous] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // 1. Inicialize sempre com o valor padrão (igual para o servidor e cliente)
   const [holiday, setHoliday] = useState<any>(DEFAULT_HOLIDAY);
   const [variantIndex, setVariantIndex] = useState<number>(0);
   const [uploaded, setUploaded] = useState<string | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedCopy, setGeneratedCopy] = useState<string | null>(null);
 
-  // 2. Use o useEffect para buscar as coisas do navegador APÓS a página carregar
   useEffect(() => {
-    // Esse código só roda no navegador, garantindo que o servidor não veja
     const storedHoliday = sessionStorage.getItem("ace.selectedHoliday");
     if (storedHoliday) {
       try { setHoliday(JSON.parse(storedHoliday)); } catch { /* ... */ }
@@ -42,12 +41,17 @@ export default function AprovarPage() {
 
     const storedImg = sessionStorage.getItem("ace.uploadedImage");
     if (storedImg) setUploaded(storedImg);
+
+    const storedGenImg = sessionStorage.getItem("ace.generatedImage");
+    if (storedGenImg) setGeneratedImage(storedGenImg);
+
+    const storedGenCopy = sessionStorage.getItem("ace.generatedCopy");
+    if (storedGenCopy) setGeneratedCopy(storedGenCopy);
   }, []);
   
   const activeVariant = useMemo(() => {
     const generated = generateCampaignVariants(holiday);
     return generated[variantIndex] || generated[0];
-
   }, [holiday, variantIndex]);
 
   const preHolidayDate = useMemo(() => {
@@ -65,39 +69,31 @@ export default function AprovarPage() {
   const activate = async () => {
     setLoading(true);
 
-    const caption = activeVariant?.copy || "Nova campanha gerada!";
-    const base64Image = typeof window !== "undefined" ? sessionStorage.getItem("ace.uploadedImage") : null;
+    const caption = generatedCopy || activeVariant?.copy || "Nova campanha gerada!";
+    const base64Image = generatedImage || uploaded;
     
     let imageUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000"; 
 
     try {
       if (base64Image) {
-      // Remove o cabeçalho do Base64 (ex: "data:image/jpeg;base64,") que o ImgBB não quer
-        const cleanBase64 = base64Image.split(",")[1];
+        console.log("Iniciando upload da imagem via Cloudinary (backend)...");
 
-        const formData = new FormData();
-        formData.append("image", cleanBase64);
-        formData.append("expiration", "300"); 
-
-        const IMGBB_API_KEY = "1edae988cc5158d6f11411a8c6074193"; 
-
-        const imgbbResponse = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        const uploadResponse = await fetch("http://127.0.0.1:8000/api/upload-imagem", {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: base64Image }),
         });
 
-        const imgbbData = await imgbbResponse.json();
+        const uploadData = await uploadResponse.json();
 
-        if (imgbbResponse.ok && imgbbData.data?.url) {
-          // Substitui a imagem padrão pela URL pública gerada para o seu arquivo!
-          imageUrl = imgbbData.data.url;
-          console.log("Imagem hospedada com sucesso no ImgBB:", imageUrl);
+        if (uploadResponse.ok && uploadData.url) {
+          imageUrl = uploadData.url;
+          console.log("Imagem hospedada com sucesso no Cloudinary:", imageUrl);
         } else {
-          throw new Error("Falha ao hospedar a imagem no ImgBB.");
+          throw new Error("Falha ao hospedar a imagem no Cloudinary. " + JSON.stringify(uploadData));
         }
       }
 
-      // 2. Envia a URL pública REAL e a LEGENDA DA IA para o seu servidor Python
       const response = await fetch("http://127.0.0.1:8000/api/instagram/postar", {
         method: "POST",
         headers: {
@@ -109,11 +105,15 @@ export default function AprovarPage() {
         }),
       });
 
-      const data = await response.json();
-
       if (response.ok) {
         router.push("/feed");
       } else {
+        const errData = await response.json().catch(() => null);
+        const errMsg = errData?.detail?.detalhes?.error?.message
+          || errData?.detail?.detalhes?.message
+          || errData?.detail
+          || "Erro desconhecido ao publicar.";
+        alert(`Erro ao publicar no Instagram:\n${typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg)}`);
         setLoading(false);
       }
     } catch (error: any) {

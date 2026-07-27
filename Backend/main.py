@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.router.database_router import router as db_router
 from src.router.ai_router import router as ai_router
+from src.router.upload_router import router as upload_router
 from src.ServerMeta.main import router as meta_router
 
 app = FastAPI(title="API Principal com Banco e Meta")
@@ -17,6 +18,7 @@ app.add_middleware(
 
 app.include_router(db_router)
 app.include_router(ai_router)
+app.include_router(upload_router)
 app.include_router(meta_router)
 
 

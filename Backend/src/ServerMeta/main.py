@@ -1,4 +1,5 @@
 import os
+import time
 from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel
 import requests
@@ -36,11 +37,37 @@ def postar_no_instagram(payload: PostSchema):
             "caption": payload.caption,
             "access_token": ACCESS_TOKEN
         }
+        print(f"Criando container de mídia com image_url: {payload.imageUrl[:80]}...")
         response_container = requests.post(f"{BASE_URL}/media", params=params_container)
+        
+        if not response_container.ok:
+            print(f"ERRO ao criar container: {response_container.status_code} - {response_container.text}")
         response_container.raise_for_status() 
         
         creation_id = response_container.json().get("id")
         print(f"Container criado com sucesso! ID: {creation_id}")
+
+        # Polling do status do container para garantir que a imagem foi baixada e processada pelo Facebook antes de publicar
+        status_code = "IN_PROGRESS"
+        attempts = 0
+        max_attempts = 15
+        
+        while status_code == "IN_PROGRESS" and attempts < max_attempts:
+            attempts += 1
+            print(f"Verificando status do container (Tentativa {attempts}/{max_attempts})...")
+            time.sleep(3)
+            
+            url_status = f"https://graph.facebook.com/v25.0/{creation_id}"
+            res_status = requests.get(url_status, params={"fields": "status_code", "access_token": ACCESS_TOKEN})
+            res_status.raise_for_status()
+            status_code = res_status.json().get("status_code", "IN_PROGRESS")
+            print(f"Status do container: {status_code}")
+
+        if status_code != "FINISHED":
+            raise HTTPException(
+                status_code=400,
+                detail=f"O contêiner de mídia não pôde ser processado a tempo. Status final: {status_code}"
+            )
 
         params_publish = {
             "creation_id": creation_id,

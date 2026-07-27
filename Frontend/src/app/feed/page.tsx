@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { TopBar } from "@/components/ace/TopBar";
 import { generateCampaignVariants, DEFAULT_HOLIDAY } from "@/lib/ace-mock";
-import { ArrowRight, Bookmark, Camera, Check, CheckCheck, Heart, MessageCircle, Send } from "lucide-react";
+import { ArrowRight, Bookmark, Camera, Check, Heart, MessageCircle, Send } from "lucide-react";
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
@@ -16,9 +16,22 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function InstagramMock({ variant, uploaded }: { variant: any; uploaded: string | null }) {
+function InstagramMock({ 
+  variant, 
+  uploaded, 
+  generated, 
+  generatedCopy 
+}: { 
+  variant: any; 
+  uploaded: string | null; 
+  generated: string | null; 
+  generatedCopy: string | null; 
+}) {
   if (!variant) return null;
   const v = variant;
+  const imageSrc = (generated ? `data:image/png;base64,${generated}` : null) || uploaded;
+  const copyText = generatedCopy || v.copy;
+  
   return (
     <div className="bg-black text-white">
       <div className="flex items-center justify-between px-3 py-2 text-[11px]">
@@ -36,12 +49,12 @@ function InstagramMock({ variant, uploaded }: { variant: any; uploaded: string |
         <span className="text-white/60">•••</span>
       </div>
       <div className="relative aspect-square w-full" style={{ background: v.art.bg }}>
-        {uploaded && <img src={uploaded} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+        {imageSrc && <img src={imageSrc} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_55%)]" />
-        {uploaded && <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />}
+        {imageSrc && <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />}
         <div className="absolute left-4 top-4 rounded-full bg-black/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest backdrop-blur">{v.art.tag}</div>
         <div className="absolute inset-x-4 bottom-4">
-          {!uploaded && <div className="text-4xl drop-shadow">{v.art.icon}</div>}
+          {!imageSrc && <div className="text-4xl drop-shadow">{v.art.icon}</div>}
           <div className="mt-1 text-lg font-extrabold leading-tight drop-shadow">{v.headline}</div>
           <div className="mt-2 inline-flex rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-zinc-900">{v.discount} · {v.coupon}</div>
         </div>
@@ -51,7 +64,7 @@ function InstagramMock({ variant, uploaded }: { variant: any; uploaded: string |
       </div>
       <div className="px-3 pb-3 text-xs">
         <div className="font-semibold">2.847 curtidas</div>
-        <div className="mt-1 leading-snug"><span className="font-semibold">@gruponexusvendas</span> {v.copy}</div>
+        <div className="mt-1 leading-snug"><span className="font-semibold">@gruponexusvendas</span> {copyText}</div>
         <div className="mt-1 text-[10px] text-white/50">há 2 minutos</div>
       </div>
     </div>
@@ -62,6 +75,8 @@ export default function FeedPage() {
   const router = useRouter();
   const [variantIdx, setVariantIdx] = useState(0);
   const [uploaded, setUploaded] = useState<string | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedCopy, setGeneratedCopy] = useState<string | null>(null);
 
   const [holiday] = useState<any>(() => {
     if (typeof window === "undefined") return DEFAULT_HOLIDAY;
@@ -80,6 +95,10 @@ export default function FeedPage() {
     if (v) setVariantIdx(Number(v));
     const img = sessionStorage.getItem("ace.uploadedImage");
     if (img) setUploaded(img);
+    const genImg = sessionStorage.getItem("ace.generatedImage");
+    if (genImg) setGeneratedImage(genImg);
+    const genCopy = sessionStorage.getItem("ace.generatedCopy");
+    if (genCopy) setGeneratedCopy(genCopy);
   }, []);
 
   return (
@@ -102,7 +121,12 @@ export default function FeedPage() {
 
         <div className="mt-12 flex justify-center animate-float-up">
           <PhoneFrame>
-            <InstagramMock variant={activeVariant} uploaded={uploaded} />
+            <InstagramMock 
+              variant={activeVariant} 
+              uploaded={uploaded} 
+              generated={generatedImage}
+              generatedCopy={generatedCopy}
+            />
           </PhoneFrame>
         </div>
       </main>

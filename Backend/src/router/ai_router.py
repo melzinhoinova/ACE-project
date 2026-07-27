@@ -1,4 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Form, HTTPException, UploadFile, File
+import traceback
 
 from src.services.gemini_service import gemini_response
 from src.services.openai_service import openai_response
@@ -11,27 +12,44 @@ router = APIRouter()
 async def gerar_campanha(
     nicho: str = Form(...),
     objetivo: str = Form(...),
-    imagem: UploadFile | None = File(default=None)
+    detalhes: str | None = Form(default=None),
+    estilo: str | None = Form(default=None),
+    imagens: list[UploadFile] = File(default=[])
 ):
     
     try:
-        image_bytes: bytes | None = None
-        if imagem is not None:
-            image_bytes = await imagem.read()
+        print(f"\n--- [REQUEST] Gerando campanha para nicho: {nicho} ---")
+        print(f"Objetivo: {objetivo}")
+        print(f"Estilo: {estilo}")
+        
+        images_list: list[bytes] | None = None
+        if imagens:
+            images_list = []
+            for img in imagens:
+                if img.filename:
+                    print(f"Imagem recebida: {img.filename} ({img.content_type})")
+                    content = await img.read()
+                    images_list.append(content)
+            if len(images_list) == 0:
+                images_list = None
 
-        dados_campanha = gemini_response(nicho, objetivo, image_bytes)
+        print(f"Total de imagens carregadas em bytes: {len(images_list) if images_list else 0}")
+        dados_campanha = gemini_response(nicho, objetivo, detalhes, estilo, images_list)
+        print(f"Prompt sugerido pelo Gemini para DALL-E: {dados_campanha.get('sugestao_prompt_imagem')}")
 
         titulo_campanha = dados_campanha["titulo_campanha"]
         legenda_instagram = dados_campanha["legenda_instagram"]
         prompt_openai = dados_campanha["sugestao_prompt_imagem"]
 
-        campaign_image_bytes: bytes = openai_response(prompt_openai)
+        campaign_image_base64: str = openai_response(prompt_openai)
 
         return {
             "titulo": titulo_campanha,
             "legenda_instagram": legenda_instagram,
-            "imagem_instagram": campaign_image_bytes
+            "imagem_instagram": campaign_image_base64
         }
     
     except Exception as e:
+        print(f"\n=== ERRO 500 em /api/campanha ===")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))   
