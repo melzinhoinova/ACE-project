@@ -3,20 +3,40 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/ace/TopBar";
-import type { Holiday } from "@/lib/holidays";
+import type { Holiday, Escopo } from "@/lib/holidays";
+import {
+  fetchOpportunities,
+  createOpportunity,
+  updateOpportunity,
+  deleteOpportunity,
+  Opportunity,
+} from "@/lib/opportunities-api";
 import {
   ArrowRight,
-  Calendar,
+  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Flame,
   Loader2,
+  Pencil,
+  Plus,
   Sparkles,
+  Trash2,
   TrendingUp,
+  X,
   Zap,
 } from "lucide-react";
 
-type Enriched = Holiday & {
+type Enriched = {
+  id: string; // numeric string or id
+  rawId?: number; // numeric id for API CRUD
+  nome: string;
+  data: string; // dd/mm/yyyy
+  isoDate: string; // yyyy-mm-dd
+  description?: string;
+  tipo: string;
+  escopo: Escopo;
+  local?: string;
   date: Date;
   score: number;
   audience: number;
@@ -24,14 +44,15 @@ type Enriched = Holiday & {
   coupon: string;
   channels: string[];
   daysAway: number;
+  isCustom?: boolean;
 };
 
-const SCOPE_LABEL: Record<Holiday["escopo"], string> = {
+const SCOPE_LABEL: Record<Escopo, string> = {
   nacional: "Nacional",
   estadual: "Estadual",
   municipal: "Municipal",
 };
-const SCOPE_STYLE: Record<Holiday["escopo"], string> = {
+const SCOPE_STYLE: Record<Escopo, string> = {
   nacional: "bg-card text-foreground border-border",
   estadual: "bg-[oklch(0.70_0.18_240/0.15)] text-[oklch(0.85_0.14_240)] border-[oklch(0.70_0.18_240/0.35)]",
   municipal: "bg-[oklch(0.74_0.18_145/0.15)] text-[oklch(0.85_0.16_145)] border-[oklch(0.74_0.18_145/0.35)]",
@@ -54,9 +75,28 @@ const META: Record<string, { score: number; audience: number; ticket: string; co
 
 const TODAY = new Date();
 
-function parseDate(dmy: string): Date {
-  const [d, m, y] = dmy.split("/").map(Number);
+function parseFlexibleDate(str: string): Date {
+  if (!str) return new Date();
+  if (str.includes("-")) {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, (m ?? 1) - 1, d ?? 1);
+  }
+  const [d, m, y] = str.split("/").map(Number);
   return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function formatBrDate(d: Date): string {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatIsoDate(d: Date): string {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${year}-${month}-${day}`;
 }
 
 function daysBetween(a: Date, b: Date) {
@@ -72,29 +112,49 @@ function seedFrom(s: string) {
   return h;
 }
 
-function enrich(h: Holiday): Enriched {
-  const date = parseDate(h.data);
-  const meta = META[h.nome];
+function enrichOpportunity(item: Opportunity | Holiday): Enriched {
+  const isApi = "title" in item;
+  const title = isApi ? item.title : item.nome;
+  const rawDateStr = isApi ? item.date : item.data;
+  const dateObj = parseFlexibleDate(rawDateStr);
+  const brDateStr = formatBrDate(dateObj);
+  const isoDateStr = formatIsoDate(dateObj);
+  const escopo = (item.escopo as Escopo) || "nacional";
+  const local = item.local || undefined;
+  const idStr = String(item.id);
+  const description = isApi ? item.description || undefined : undefined;
+
+  const meta = META[title];
   const fallback = (() => {
-    const seed = seedFrom(h.nome + h.data);
+    const seed = seedFrom(title + brDateStr);
     return {
-      score: 50 + (seed % 35),
-      audience: 300 + (seed % 900),
-      ticket: `R$ ${180 + (seed % 250)}`,
+      score: 55 + (seed % 35),
+      audience: 350 + (seed % 900),
+      ticket: `R$ ${190 + (seed % 250)}`,
       coupon: `PROMO${(seed % 30) + 5}`,
       channels: ["Instagram"],
     };
   })();
   const m = meta ?? fallback;
+
   return {
-    ...h,
-    date,
-    daysAway: daysBetween(date, TODAY),
+    id: idStr,
+    rawId: typeof item.id === "number" ? item.id : undefined,
+    nome: title,
+    data: brDateStr,
+    isoDate: isoDateStr,
+    description,
+    tipo: isApi ? "custom" : item.tipo,
+    escopo,
+    local,
+    date: dateObj,
+    daysAway: daysBetween(dateObj, TODAY),
     score: m.score,
     audience: m.audience,
     ticket: m.ticket,
     coupon: m.coupon,
     channels: m.channels,
+    isCustom: isApi,
   };
 }
 
@@ -123,23 +183,41 @@ export default function RadarPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [monthOffset, setMonthOffset] = useState(0);
 
-  useEffect(() => {
-    let alive = true;
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Enriched | null>(null);
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formDate, setFormDate] = useState("");
+  const [formEscopo, setFormEscopo] = useState<Escopo>("nacional");
+  const [formLocal, setFormLocal] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const loadData = async () => {
     setLoading(true);
-    fetch(`/api/holidays?ano=${TODAY.getFullYear()}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!alive) return;
-        setHolidays(data.holidays.map(enrich));
-        setError(data.error);
-        setSelectedId(null);
-      })
-      .catch((e: unknown) => {
-        if (!alive) return;
-        setError((e as Error).message);
-      })
-      .finally(() => alive && setLoading(false));
-    return () => { alive = false; };
+    setError(null);
+    try {
+      // Busca oportunidades reais da API FastAPI conectada ao Supabase
+      const dataFromDb = await fetchOpportunities(true);
+      if (dataFromDb && dataFromDb.length > 0) {
+        setHolidays(dataFromDb.map(enrichOpportunity));
+      } else {
+        // Se o banco estiver limpo (0 itens), busca feriados padrão para popular inicialmente
+        const r = await fetch(`/api/holidays?ano=${TODAY.getFullYear()}`);
+        const data = await r.json();
+        setHolidays((data.holidays || []).map((h: Holiday) => enrichOpportunity(h)));
+      }
+    } catch (e: unknown) {
+      console.error("Erro ao conectar com Supabase:", e);
+      setError("Backend FastAPI indisponível em http://127.0.0.1:8000. Certifique-se de que o uvicorn está rodando.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const upcoming = useMemo(
@@ -157,6 +235,83 @@ export default function RadarPage() {
     return new Date(base.getFullYear(), base.getMonth() + monthOffset, 1);
   }, [hot, monthOffset]);
 
+  // Handle open modal for create
+  const handleOpenCreateModal = () => {
+    setEditingItem(null);
+    setFormTitle("");
+    setFormDescription("");
+    setFormDate(formatIsoDate(TODAY));
+    setFormEscopo("nacional");
+    setFormLocal("");
+    setIsModalOpen(true);
+  };
+
+  // Handle open modal for edit
+  const handleOpenEditModal = (item: Enriched) => {
+    setEditingItem(item);
+    setFormTitle(item.nome);
+    setFormDescription(item.description || "");
+    setFormDate(item.isoDate);
+    setFormEscopo(item.escopo);
+    setFormLocal(item.local || "");
+    setIsModalOpen(true);
+  };
+
+  // Handle save (Create or Update)
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTitle || !formDate) return;
+
+    setIsSaving(true);
+    try {
+      if (editingItem && editingItem.rawId) {
+        // Update no Supabase via FastAPI
+        await updateOpportunity(editingItem.rawId, {
+          title: formTitle,
+          description: formDescription || undefined,
+          date: formDate,
+          escopo: formEscopo,
+          local: formLocal || undefined,
+        });
+      } else {
+        // Create no Supabase via FastAPI
+        await createOpportunity({
+          title: formTitle,
+          description: formDescription || undefined,
+          date: formDate,
+          escopo: formEscopo,
+          local: formLocal || undefined,
+        });
+      }
+      setIsModalOpen(false);
+      await loadData();
+    } catch (err: unknown) {
+      alert((err as Error).message || "Erro ao salvar no Supabase");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async (item: Enriched) => {
+    if (!confirm(`Deseja realmente excluir a oportunidade "${item.nome}"?`)) return;
+
+    setIsDeleting(true);
+    try {
+      if (item.rawId) {
+        await deleteOpportunity(item.rawId);
+      }
+      if (selectedId === item.id) {
+        setSelectedId(null);
+      }
+      await loadData();
+    } catch (err: unknown) {
+      alert((err as Error).message || "Erro ao excluir do Supabase");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <TopBar>
       <main className="mx-auto max-w-7xl px-6 py-10">
@@ -165,33 +320,47 @@ export default function RadarPage() {
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
               Bom dia <span className="inline-block">👋</span>
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Calendário de oportunidades de campanha</p>
+            <p className="mt-1 text-sm text-muted-foreground">Calendário de oportunidades de campanha (Supabase Sync)</p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success animate-float-up">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-            </span>
-            <Zap size={12} />
-            {holidays.length} oportunidades de campanhas carregadas
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleOpenCreateModal}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-brand px-4 py-2 text-xs font-semibold text-white shadow-lg glow-brand transition hover:scale-[1.03] active:scale-[0.98]"
+            >
+              <Plus size={16} /> Nova Oportunidade
+            </button>
+            <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success animate-float-up">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+              </span>
+              <Zap size={12} />
+              {holidays.length} oportunidades carregadas
+            </div>
           </div>
         </div>
 
         {error && (
           <div className="mt-6 rounded-2xl border border-[oklch(0.70_0.22_25/0.30)] bg-[oklch(0.70_0.22_25/0.10)] px-4 py-3 text-sm text-[oklch(0.78_0.18_25)]">
-            Não foi possível carregar os feriados: {error}. Usando calendário base.
+            Aviso de sincronização: {error}.
           </div>
         )}
 
         {loading ? (
           <div className="mt-10 grid place-items-center rounded-3xl card-surface p-16">
             <div className="flex items-center gap-3 text-muted-foreground">
-              <Loader2 className="animate-spin" size={18} /> Carregando feriados…
+              <Loader2 className="animate-spin" size={18} /> Carregando oportunidades do Supabase…
             </div>
           </div>
         ) : selected ? (
           <>
-            <FeaturedCard selected={selected} isHot={selected.id === hot?.id} />
+            <FeaturedCard
+              selected={selected}
+              isHot={selected.id === hot?.id}
+              onEdit={() => handleOpenEditModal(selected)}
+              onDelete={() => handleDelete(selected)}
+              isDeleting={isDeleting}
+            />
 
             <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2">
@@ -211,6 +380,8 @@ export default function RadarPage() {
                 selectedId={selected.id}
                 hotId={hot?.id ?? null}
                 onSelect={(id) => setSelectedId(id)}
+                onEdit={handleOpenEditModal}
+                onDelete={handleDelete}
               />
             </div>
 
@@ -234,40 +405,183 @@ export default function RadarPage() {
           </>
         ) : (
           <div className="mt-10 rounded-3xl card-surface p-10 text-center text-muted-foreground">
-            Nenhum feriado futuro disponível.
+            Nenhuma oportunidade disponível. <button onClick={handleOpenCreateModal} className="text-primary underline">Cadastrar primeira oportunidade</button>
           </div>
         )}
       </main>
+
+      {/* Modal Modal (Criar / Editar) */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-lg rounded-3xl border border-border/80 bg-background/95 card-surface p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border/40 pb-4">
+              <h3 className="text-lg font-bold">
+                {editingItem ? "Editar Oportunidade" : "Nova Oportunidade"}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="rounded-full p-1 text-muted-foreground hover:bg-card hover:text-foreground"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  Título da Oportunidade *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Liquidação de Primavera, Black Friday..."
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  Data *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
+                  className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    Escopo
+                  </label>
+                  <select
+                    value={formEscopo}
+                    onChange={(e) => setFormEscopo(e.target.value as Escopo)}
+                    className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  >
+                    <option value="nacional">Nacional</option>
+                    <option value="estadual">Estadual</option>
+                    <option value="municipal">Municipal</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    Localidade / UF (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: SP, São Paulo/SP"
+                    value={formLocal}
+                    onChange={(e) => setFormLocal(e.target.value)}
+                    className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                  Descrição (Opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Detalhes ou observações sobre a data promocional..."
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-border/40 pt-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-xl border border-border/80 px-4 py-2 text-xs font-medium hover:bg-card"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-brand px-5 py-2 text-xs font-semibold text-white glow-brand hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : "Salvar no Supabase"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </TopBar>
   );
 }
 
-function FeaturedCard({ selected, isHot }: { selected: Enriched; isHot: boolean }) {
+function FeaturedCard({
+  selected,
+  isHot,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: {
+  selected: Enriched;
+  isHot: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
   return (
     <div className="relative mt-8">
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-brand opacity-20 blur-3xl" />
-      <div className="border-gradient-brand rounded-3xl p-7 sm:p-9 card-surface">
-        <div className="inline-flex items-center gap-2 rounded-full bg-danger/10 border border-danger/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-danger">
-          <Flame size={12} />
-          {isHot ? "Oportunidade em alta agora" : "Oportunidade selecionada"}
+      <div className="border-gradient-brand rounded-3xl p-7 sm:p-9 card-surface flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-danger/10 border border-danger/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-danger">
+            <Flame size={12} />
+            {isHot ? "Oportunidade em alta agora" : "Oportunidade selecionada"}
+          </div>
+          <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl">{selected.nome}</h2>
+          {selected.description && (
+            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{selected.description}</p>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <CalendarIcon size={14} /> {selected.data}
+            <span>·</span>
+            <span>
+              {selected.daysAway === 0
+                ? "hoje"
+                : selected.daysAway > 0
+                ? `em ${selected.daysAway} dias`
+                : `há ${Math.abs(selected.daysAway)} dias`}
+            </span>
+            <span
+              className={`ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${SCOPE_STYLE[selected.escopo]}`}
+            >
+              {SCOPE_LABEL[selected.escopo]}
+              {selected.local ? ` · ${selected.local}` : ""}
+            </span>
+          </div>
         </div>
-        <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl">{selected.nome}</h2>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <Calendar size={14} /> {selected.data}
-          <span>·</span>
-          <span>
-            {selected.daysAway === 0
-              ? "hoje"
-              : selected.daysAway > 0
-              ? `em ${selected.daysAway} dias`
-              : `há ${Math.abs(selected.daysAway)} dias`}
-          </span>
-          <span
-            className={`ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${SCOPE_STYLE[selected.escopo]}`}
+
+        {/* Action Buttons for Edit / Delete */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onEdit}
+            title="Editar Oportunidade"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-card/80 px-3 py-2 text-xs font-medium hover:bg-card hover:border-primary transition"
           >
-            {SCOPE_LABEL[selected.escopo]}
-            {selected.local ? ` · ${selected.local}` : ""}
-          </span>
+            <Pencil size={14} /> Editar
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={isDeleting}
+            title="Excluir Oportunidade"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-xs font-medium text-danger hover:bg-danger/20 transition disabled:opacity-50"
+          >
+            <Trash2 size={14} /> Excluir
+          </button>
         </div>
       </div>
     </div>
@@ -363,30 +677,41 @@ function CalendarGrid({
 }
 
 function UpcomingList({
-  items, selectedId, hotId, onSelect,
+  items,
+  selectedId,
+  hotId,
+  onSelect,
+  onEdit,
+  onDelete,
 }: {
   items: Enriched[];
   selectedId: string;
   hotId: string | null;
   onSelect: (id: string) => void;
+  onEdit: (item: Enriched) => void;
+  onDelete: (item: Enriched) => void;
 }) {
   return (
     <div className="rounded-3xl card-surface p-5 sm:p-6">
-      <div className="mb-4 flex items-center gap-2 text-sm font-semibold">
-        <TrendingUp size={16} className="text-gradient-brand" />
-        Próximas oportunidades
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <TrendingUp size={16} className="text-gradient-brand" />
+          Próximas oportunidades
+        </div>
       </div>
       <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
         {items.map((h) => {
           const active = h.id === selectedId;
           const isHot = h.id === hotId;
           return (
-            <button
+            <div
               key={h.id}
-              onClick={() => onSelect(h.id)}
-              className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition hover:bg-card/80 ${active ? "border-primary bg-card/60" : "border-border/30"}`}
+              className={`group flex items-center justify-between gap-2 rounded-xl border p-3 text-left transition hover:bg-card/80 ${active ? "border-primary bg-card/60" : "border-border/30"}`}
             >
-              <div className="min-w-0">
+              <button
+                onClick={() => onSelect(h.id)}
+                className="flex-1 min-w-0 text-left"
+              >
                 <div className="flex items-center gap-1.5 truncate text-sm font-medium">
                   {isHot && <Flame size={12} className="text-[oklch(0.78_0.18_25)]" />}
                   {h.nome}
@@ -397,9 +722,32 @@ function UpcomingList({
                     {SCOPE_LABEL[h.escopo]}
                   </span>
                 </div>
+              </button>
+              
+              <div className="flex items-center gap-1">
+                <span className={`text-xs font-bold ${scoreColor(h.score)} mr-1`}>{h.score}%</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(h);
+                  }}
+                  title="Editar"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-primary transition"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(h);
+                  }}
+                  title="Excluir"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-danger transition"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
-              <div className={`text-sm font-bold ${scoreColor(h.score)}`}>{h.score}%</div>
-            </button>
+            </div>
           );
         })}
       </div>

@@ -106,8 +106,29 @@ export default function AprovarPage() {
       });
 
       if (response.ok) {
+        const postData = await response.json().catch(() => ({}));
+        const rawPostId = postData.post_id ? parseInt(postData.post_id, 10) : undefined;
+        const oppId = typeof holiday.id === "number" ? holiday.id : (holiday.rawId ? Number(holiday.rawId) : 1);
+
+        // Salvar a campanha no Supabase
+        try {
+          const { saveCampaign } = await import("@/lib/opportunities-api");
+          await saveCampaign({
+            title: holiday.nome ? `Campanha ${holiday.nome}` : "Campanha Instagram",
+            campaign: caption,
+            description: `Imagem Cloudinary: ${imageUrl}`,
+            date: new Date().toISOString().split("T")[0],
+            id_opportunity: oppId,
+            id_PostInstagram: isNaN(rawPostId!) ? undefined : rawPostId,
+          });
+          console.log("Campanha gravada com sucesso no Supabase!");
+        } catch (dbErr) {
+          console.warn("Aviso ao gravar campanha no Supabase:", dbErr);
+        }
+
         router.push("/feed");
       } else {
+
         const errData = await response.json().catch(() => null);
         const errMsg = errData?.detail?.detalhes?.error?.message
           || errData?.detail?.detalhes?.message

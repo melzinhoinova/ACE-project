@@ -187,26 +187,7 @@ def obtener_dashboard_geral():
         "comentarios": lista_comentarios if lista_comentarios else ["Nenhum comentário neste post ainda."]
     }
 
-@router.get("/dashboard/post/recente")
-def obter_dados_post_recente():
-    if not INSTAGRAM_ID or not ACCESS_TOKEN:
-        raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
-        
-    url_lista = f"https://graph.facebook.com/v25.0/{INSTAGRAM_ID}/media"
-    res_lista = requests.get(url_lista, params={"access_token": ACCESS_TOKEN})
-    
-    if res_lista.status_code != 200:
-        raise HTTPException(status_code=res_lista.status_code, detail=res_lista.json())
-        
-    lista_posts = res_lista.json().get("data", [])
-    if not lista_posts:
-        return {
-            "media_id": "nenhum", "likes": 0, "commentsCount": 0, "reach": 0,
-            "comentarios": ["Nenhuma publicação encontrada."]
-        }
-        
-    media_id = lista_posts[0].get("id")
-
+def _fetch_post_metrics(media_id: str):
     url_media = f"https://graph.facebook.com/v25.0/{media_id}"
     res_media = requests.get(url_media, params={"fields": "like_count,comments_count", "access_token": ACCESS_TOKEN}).json()
     
@@ -247,6 +228,37 @@ def obter_dados_post_recente():
         "reach": reach_post,
         "comentarios": lista_comentarios_formatados if lista_comentarios_formatados else ["Nenhum comentário ainda."]
     }
+
+@router.get("/dashboard/post/recente")
+def obter_dados_post_recente():
+    if not INSTAGRAM_ID or not ACCESS_TOKEN:
+        raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
+        
+    url_lista = f"https://graph.facebook.com/v25.0/{INSTAGRAM_ID}/media"
+    res_lista = requests.get(url_lista, params={"access_token": ACCESS_TOKEN})
+    
+    if res_lista.status_code != 200:
+        raise HTTPException(status_code=res_lista.status_code, detail=res_lista.json())
+        
+    lista_posts = res_lista.json().get("data", [])
+    if not lista_posts:
+        return {
+            "media_id": "nenhum", "likes": 0, "commentsCount": 0, "reach": 0,
+            "comentarios": ["Nenhuma publicação encontrada."]
+        }
+        
+    media_id = lista_posts[0].get("id")
+    return _fetch_post_metrics(media_id)
+
+@router.get("/dashboard/post/{media_id}")
+def obter_dados_post_por_id(media_id: str):
+    if not INSTAGRAM_ID or not ACCESS_TOKEN:
+        raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
+    try:
+        return _fetch_post_metrics(media_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar métricas do post {media_id}: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,11 +1,8 @@
 from typing import Optional
 from datetime import date as dt
 
-from sqlalchemy import Date
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import mapped_column
+from sqlalchemy import Date, BigInteger, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 # modelo base para o database
@@ -18,19 +15,22 @@ class Opportunity(Base):
 
     __tablename__ = "opportunities"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     title: Mapped[str]
     description: Mapped[Optional[str]]
     date: Mapped[dt] = mapped_column(Date)
+
+
 
 # modelo da tabela de campanhas antigas
 class Campaign(Base):
 
     __tablename__ = "campaigns"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     title: Mapped[str]
     campaign: Mapped[str]
     description: Mapped[Optional[str]]
     date: Mapped[dt] = mapped_column(Date)
     id_opportunity: Mapped[int] = mapped_column(ForeignKey("opportunities.id"))
+    id_PostInstagram: Mapped[Optional[int]] = mapped_column("id_PostInstagram", BigInteger, unique=True, nullable=True)

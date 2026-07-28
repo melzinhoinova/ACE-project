@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { TopBar } from "@/components/ace/TopBar";
+import { fetchCampaigns, CampaignDb } from "@/lib/opportunities-api";
 import { 
   ArrowRight, 
   Eye, 
@@ -15,7 +16,8 @@ import {
   Users, 
   UserCheck, 
   TrendingUp, 
-  Activity 
+  History,
+  Loader2
 } from "lucide-react";
 
 function useCounter(target: number, duration = 1200) {
@@ -34,6 +36,15 @@ function useCounter(target: number, duration = 1200) {
     return () => cancelAnimationFrame(raf);
   }, [target, duration]);
   return val;
+}
+
+function formatCampaignOptionDate(dStr: string): string {
+  if (!dStr) return "";
+  if (dStr.includes("-")) {
+    const [y, m, d] = dStr.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  return dStr;
 }
 
 function Metric({ icon, label, value, sub, delay, pulse, highlight }: any) {
@@ -66,26 +77,86 @@ export default function DashboardSucessoPage() {
   const [dadosPost, setDadosPost] = useState<any>({ likes: 0, commentsCount: 0, reach: 0, comentarios: [] });
   const [share, setShare] = useState(false);
 
+  // Histórico de campanhas salvas no banco
+  const [campaignsHistory, setCampaignsHistory] = useState<CampaignDb[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+  const [loadingPost, setLoadingPost] = useState(false);
+
+  const fetchPostMetrics = async (mediaId: string) => {
+    setLoadingPost(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/instagram/dashboard/post/${mediaId}`, {
+        cache: "no-store",
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      if (res.ok) {
+        setDadosPost(await res.json());
+      }
+    } catch (err) {
+      console.error("Erro ao buscar métricas de post específico", err);
+    } finally {
+      setLoadingPost(false);
+    }
+  };
+
+  const fetchRecentPost = async () => {
+    setLoadingPost(true);
+    try {
+      const resPost = await fetch("http://127.0.0.1:8000/api/instagram/dashboard/post/recente", {
+        cache: "no-store",
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      if (resPost.ok) setDadosPost(await resPost.json());
+    } catch (err) {
+      console.error("Erro ao buscar post recente", err);
+    } finally {
+      setLoadingPost(false);
+    }
+  };
+
   useEffect(() => {
     async function carregarDashboard() {
       try {
+        // 1. Carrega dados gerais da conta
         const resGeral = await fetch("http://127.0.0.1:8000/api/instagram/dashboard/geral", {
           cache: "no-store",
           headers: { 'Cache-Control': 'no-cache' }
         });
         if (resGeral.ok) setDadosGeral(await resGeral.json());
 
-        const resPost = await fetch("http://127.0.0.1:8000/api/instagram/dashboard/post/recente", {
-          cache: "no-store",
-          headers: { 'Cache-Control': 'no-cache' }
-        });
-        if (resPost.ok) setDadosPost(await resPost.json());
+        // 2. Carrega lista de campanhas salvas
+        const dbCampaigns = await fetchCampaigns().catch(() => []);
+        setCampaignsHistory(dbCampaigns || []);
+
+        // 3. Seleção Padrão (Auto-seleciona a campanha mais recente gravada)
+        if (dbCampaigns && dbCampaigns.length > 0) {
+          const firstWithMedia = dbCampaigns.find((c) => c.id_PostInstagram) || dbCampaigns[0];
+          setSelectedCampaignId(firstWithMedia.id);
+          if (firstWithMedia.id_PostInstagram) {
+            fetchPostMetrics(String(firstWithMedia.id_PostInstagram));
+          } else {
+            fetchRecentPost();
+          }
+        } else {
+          fetchRecentPost();
+        }
       } catch (err) {
         console.error("Erro ao buscar dados do dashboard do Meta", err);
+        fetchRecentPost();
       }
     }
     carregarDashboard();
   }, []);
+
+  const handleSelectCampaign = (cId: number) => {
+    setSelectedCampaignId(cId);
+    const camp = campaignsHistory.find((c) => c.id === cId);
+    if (camp && camp.id_PostInstagram) {
+      fetchPostMetrics(String(camp.id_PostInstagram));
+    } else {
+      fetchRecentPost();
+    }
+  };
 
   const totalFollowers = useCounter(dadosGeral?.followers || 0);
   const totalImpressions = useCounter(dadosGeral?.impressions || 0);
@@ -95,15 +166,6 @@ export default function DashboardSucessoPage() {
   const postLikes = useCounter(dadosPost?.likes || 0);
   const postCommentsCount = useCounter(dadosPost?.commentsCount || 0);
   const postReach = useCounter(dadosPost?.reach || 0);
-
-  // Proteção contra divisão por zero e propriedades undefined no engajamento
-  const taxaEngajamento = useMemo(() => {
-    if (!dadosPost || !dadosPost.reach || dadosPost.reach === 0) return 0;
-    const likes = dadosPost.likes || 0;
-    const comments = dadosPost.commentsCount || 0;
-    const interacoes = likes + comments;
-    return Math.min(100, Math.round((interacoes / dadosPost.reach) * 100));
-  }, [dadosPost]);
 
   // Valores calculados com segurança para as barras do gráfico
   const percentPerfil = useMemo(() => {
@@ -150,7 +212,7 @@ export default function DashboardSucessoPage() {
               onClick={() => setAbaAtiva("post")} 
               className={`rounded-full px-6 py-2.5 text-xs font-bold transition-all duration-300 ${abaAtiva === "post" ? "bg-card text-foreground shadow-md scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
-              Métricas do Post Recente
+              Métricas do Post
             </button>
           </div>
         </div>
@@ -213,47 +275,75 @@ export default function DashboardSucessoPage() {
             </div>
           ) : (
             <div className="space-y-8">
-              {/* CARDS DO POST CRIADO */}
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+              {/* SELETOR DE HISTÓRICO DE CAMPANHAS */}
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-brand-soft">
+                    <History size={20} className="text-foreground" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Histórico de Publicações</div>
+                    <div className="text-xs text-muted-foreground">Selecione uma campanha anterior para consultar seu histórico de métricas.</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {loadingPost && <Loader2 size={16} className="animate-spin text-primary" />}
+                  <select
+                    value={selectedCampaignId || ""}
+                    onChange={(e) => handleSelectCampaign(Number(e.target.value))}
+                    className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-xs font-bold focus:border-primary focus:outline-none shadow-sm cursor-pointer min-w-[280px]"
+                  >
+                    {campaignsHistory.length === 0 ? (
+                      <option value="">Publicação Mais Recente</option>
+                    ) : (
+                      campaignsHistory.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title} — {formatCampaignOptionDate(c.date)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* CARDS DO POST SELECIONADO */}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <Metric icon={<Heart size={20} className="text-red-500 fill-red-500" />} label="Curtidas Disponíveis" value={postLikes.toString()} sub="Engajamento ativo na publicação" delay={0} />
                 <Metric icon={<BarChart3 size={20} className="text-brand" />} label="Alcance Dedicado" value={postReach.toLocaleString("pt-BR")} sub="Pessoas que receberam o post no feed" delay={100} />
                 <Metric icon={<MessageSquare size={20} className="text-brand" />} label="Comentários Totais" value={postCommentsCount.toString()} sub="Interações discursivas catalogadas" delay={200} pulse />
               </div>
 
-              {/* DASHBOARD LAYOUT MIX */}
-              <div className="md:grid-cols-3 gap-6">
-                {/* Central Informativa de Comentários */}
-                <div className="md:col-span-2 rounded-3xl border border-border/60 bg-card p-6 shadow-card flex flex-col justify-between animate-float-up" style={{ animationDelay: '300ms' }}>
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
-                      <MessageSquare size={14} /> Histórico de Comentários do Feed
-                    </div>
-                    <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-                      {dadosPost && Array.isArray(dadosPost.comentarios) && dadosPost.comentarios.length > 0 ? (
-                        dadosPost.comentarios.map((txt: string, i: number) => {
-                          const ehResposta = txt.startsWith("   ↳");
-                          return (
-                            <div 
-                              key={i} 
-                              className={`rounded-2xl border px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
-                                ehResposta 
-                                  ? "border-border/20 bg-background/30 text-muted-foreground ml-6 text-xs italic" 
-                                  : "border-border/40 bg-background/60 text-foreground font-medium"
-                              }`}
-                            >
-                              {txt}
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-sm text-muted-foreground italic px-4 py-3">
-                          Nenhum comentário associado a esta publicação ainda.
-                        </div>
-                      )}
-                    </div>
+              {/* CAIXA DE COMENTÁRIOS DO FEED */}
+              <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card flex flex-col justify-between animate-float-up" style={{ animationDelay: '300ms' }}>
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+                    <MessageSquare size={14} /> Histórico de Comentários do Feed
+                  </div>
+                  <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+                    {dadosPost && Array.isArray(dadosPost.comentarios) && dadosPost.comentarios.length > 0 ? (
+                      dadosPost.comentarios.map((txt: string, i: number) => {
+                        const ehResposta = txt.startsWith("   ↳");
+                        return (
+                          <div 
+                            key={i} 
+                            className={`rounded-2xl border px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
+                              ehResposta 
+                                ? "border-border/20 bg-background/30 text-muted-foreground ml-6 text-xs italic" 
+                                : "border-border/40 bg-background/60 text-foreground font-medium"
+                            }`}
+                          >
+                            {txt}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-sm text-muted-foreground italic px-4 py-3">
+                        Nenhum comentário associado a esta publicação ainda.
+                      </div>
+                    )}
                   </div>
                 </div>
-
               </div>
             </div>
           )}
