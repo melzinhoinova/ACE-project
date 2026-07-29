@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import date as dt
 
-from sqlalchemy import Date, BigInteger, ForeignKey
+from sqlalchemy import Date, BigInteger
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -32,5 +32,5 @@ class Campaign(Base):
     campaign: Mapped[str]
     description: Mapped[Optional[str]]
     date: Mapped[dt] = mapped_column(Date)
-    id_opportunity: Mapped[int] = mapped_column(ForeignKey("opportunities.id"))
-    id_PostInstagram: Mapped[Optional[int]] = mapped_column("id_PostInstagram", BigInteger, unique=True, nullable=True)
+    opportunity: Mapped[str]
+    id_PostInstagram: Mapped[Optional[int]] = mapped_column("id_PostInstagram", BigInteger, unique=True, nullable=True)

@@ -15,10 +15,10 @@ class CampaignRepository:
     def get_by_id(self, db: Session, campaign_id: int) -> Optional[Campaign]:
         return db.query(Campaign).filter(Campaign.id == campaign_id).first()
 
-    def get_by_opportunity(self, db: Session, opportunity_id: int):
+    def get_by_opportunity(self, db: Session, opportunity: str):
         return (
             db.query(Campaign)
-            .filter(Campaign.id_opportunity == opportunity_id)
+            .filter(Campaign.opportunity == opportunity)
             .order_by(Campaign.date.desc())
             .all()
         )
@@ -29,7 +29,7 @@ class CampaignRepository:
             campaign=data.campaign,
             description=data.description,
             date=data.date,
-            id_opportunity=data.id_opportunity,
+            opportunity=data.opportunity,
             id_PostInstagram=data.id_PostInstagram,
         )
         db.add(campaign)

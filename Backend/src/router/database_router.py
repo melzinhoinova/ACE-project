@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from src.dependencies.api_dependency import get_db
+
 from src.repositories.opportunity_repository import OpportunityRepository
 from src.repositories.campaign_repository import CampaignRepository
+
 from src.models.api_models import (
     OpportunityCreate, OpportunityUpdate, OpportunityResponse,
     CampaignCreate, CampaignDbResponse
@@ -49,9 +51,9 @@ async def delete_opportunity(opportunity_id: int, db: Session = Depends(get_db))
 # --- ROTAS DE CAMPANHAS ---
 
 @router.get("/api/campanhas", response_model=list[CampaignDbResponse])
-async def get_campaigns(opportunity_id: Optional[int] = None, db: Session = Depends(get_db)):
-    if opportunity_id:
-        return campaign_repo.get_by_opportunity(db, opportunity_id)
+async def get_campaigns(opportunity: Optional[str] = None, db: Session = Depends(get_db)):
+    if opportunity:
+        return campaign_repo.get_by_opportunity(db, opportunity)
     return campaign_repo.get_all(db)
 
 @router.post("/api/campanhas", response_model=CampaignDbResponse, status_code=status.HTTP_201_CREATED)
@@ -64,4 +66,4 @@ async def delete_campaign(campaign_id: int, db: Session = Depends(get_db)):
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campanha não encontrada")
     return None
-
+

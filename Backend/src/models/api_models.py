@@ -49,7 +49,7 @@ class CampaignCreate(BaseModel):
     campaign: str
     description: Optional[str] = None
     date: dt
-    id_opportunity: int
+    opportunity: str
     id_PostInstagram: Optional[int] = None
 
 # modelo de resposta de campanha vinda do Supabase
@@ -59,10 +59,10 @@ class CampaignDbResponse(BaseModel):
     campaign: str
     description: Optional[str] = None
     date: dt
-    id_opportunity: int
+    opportunity: str
     id_PostInstagram: Optional[int] = None
 
     model_config = {
         "from_attributes": True
     }
-
+
