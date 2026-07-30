@@ -136,55 +136,57 @@ def obtener_dashboard_geral():
         print(f"💥 Falha crítica no dashboard geral: {str(e)}")
         raise HTTPException(status_code=500, detail="Erro ao processar dados gerais.")
 
-    if not INSTAGRAM_ID or not ACCESS_TOKEN:
-        raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
+    finally:
         
-    url_lista = f"https://graph.facebook.com/v25.0/{INSTAGRAM_ID}/media"
-    res_lista = requests.get(url_lista, params={"access_token": ACCESS_TOKEN})
-    
-    if res_lista.status_code != 200:
-        print(f"Erro da Meta ao listar mídias: {res_lista.json()}")
-        raise HTTPException(status_code=res_lista.status_code, detail=res_lista.json())
+        if not INSTAGRAM_ID or not ACCESS_TOKEN:
+            raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
+            
+        url_lista = f"https://graph.facebook.com/v25.0/{INSTAGRAM_ID}/media"
+        res_lista = requests.get(url_lista, params={"access_token": ACCESS_TOKEN})
         
-    lista_posts = res_lista.json().get("data", [])
-    if not lista_posts:
+        if res_lista.status_code != 200:
+            print(f"Erro da Meta ao listar mídias: {res_lista.json()}")
+            raise HTTPException(status_code=res_lista.status_code, detail=res_lista.json())
+            
+        lista_posts = res_lista.json().get("data", [])
+        if not lista_posts:
+            return {
+                "media_id": "nenhum", "likes": 0, "commentsCount": 0, "reach": 0,
+                "comentarios": ["Nenhuma publicação encontrada nesta conta do Instagram."]
+            }
+            
+        media_id = lista_posts[0].get("id")
+        print(f"Conectado ao post real mais recente. ID: {media_id}")
+
+        url_media = f"https://graph.facebook.com/v25.0/{media_id}"
+        res_media = requests.get(url_media, params={"fields": "like_count,comments_count", "access_token": ACCESS_TOKEN}).json()
+        url_comments = f"https://graph.facebook.com/v25.0/{media_id}/comments"
+        res_comments = requests.get(url_comments, params={"access_token": ACCESS_TOKEN}).json()
+        lista_comentarios = [item.get("text") for item in res_comments.get("data", [])]
+        print(f"Comentários reais encontrados no post: {lista_comentarios}")
+        
+        url_insights = f"https://graph.facebook.com/v25.0/{media_id}/insights"
+        res_insights = requests.get(url_insights, params={"metric": "reach", "access_token": ACCESS_TOKEN})
+        
+        reach_post = 0
+        if res_insights.status_code == 200:
+            data_ins = res_insights.json().get("data", [])
+            if data_ins:
+                valores = data_ins[0].get("values", [])
+                if valores:
+                    reach_post = valores[0].get("value", 0)
+                else:
+                    reach_post = data_ins[0].get("total_value", {}).get("value", 0)
+        else:
+            print(f"Insights do post restritos: {res_insights.json()}")
+
         return {
-            "media_id": "nenhum", "likes": 0, "commentsCount": 0, "reach": 0,
-            "comentarios": ["Nenhuma publicação encontrada nesta conta do Instagram."]
+            "media_id": media_id,
+            "likes": res_media.get("like_count", 0),
+            "commentsCount": res_media.get("comments_count", len(lista_comentarios)),
+            "reach": reach_post,
+            "comentarios": lista_comentarios if lista_comentarios else ["Nenhum comentário neste post ainda."]
         }
-        
-    media_id = lista_posts[0].get("id")
-    print(f"Conectado ao post real mais recente. ID: {media_id}")
-
-    url_media = f"https://graph.facebook.com/v25.0/{media_id}"
-    res_media = requests.get(url_media, params={"fields": "like_count,comments_count", "access_token": ACCESS_TOKEN}).json()
-    url_comments = f"https://graph.facebook.com/v25.0/{media_id}/comments"
-    res_comments = requests.get(url_comments, params={"access_token": ACCESS_TOKEN}).json()
-    lista_comentarios = [item.get("text") for item in res_comments.get("data", [])]
-    print(f"Comentários reais encontrados no post: {lista_comentarios}")
-    
-    url_insights = f"https://graph.facebook.com/v25.0/{media_id}/insights"
-    res_insights = requests.get(url_insights, params={"metric": "reach", "access_token": ACCESS_TOKEN})
-    
-    reach_post = 0
-    if res_insights.status_code == 200:
-        data_ins = res_insights.json().get("data", [])
-        if data_ins:
-            valores = data_ins[0].get("values", [])
-            if valores:
-                reach_post = valores[0].get("value", 0)
-            else:
-                reach_post = data_ins[0].get("total_value", {}).get("value", 0)
-    else:
-        print(f"Insights do post restritos: {res_insights.json()}")
-
-    return {
-        "media_id": media_id,
-        "likes": res_media.get("like_count", 0),
-        "commentsCount": res_media.get("comments_count", len(lista_comentarios)),
-        "reach": reach_post,
-        "comentarios": lista_comentarios if lista_comentarios else ["Nenhum comentário neste post ainda."]
-    }
 
 def _fetch_post_metrics(media_id: str):
     url_media = f"https://graph.facebook.com/v25.0/{media_id}"
