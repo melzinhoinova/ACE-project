@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Form, HTTPException, UploadFile, File
 import traceback
+from typing import Annotated
 
 from src.services.gemini_service import gemini_response
 from src.services.openai_service import openai_response
@@ -14,7 +15,7 @@ async def gerar_campanha(
     objetivo: str = Form(...),
     detalhes: str | None = Form(default=None),
     estilo: str | None = Form(default=None),
-    imagens: list[UploadFile] = File(default=[])
+    imagens: Annotated[UploadFile | None, File()] = None,
 ):
     
     try:
