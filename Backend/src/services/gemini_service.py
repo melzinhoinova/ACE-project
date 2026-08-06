@@ -8,57 +8,18 @@ from dotenv import load_dotenv
 import os
 import io
 import json
-import requests
 
 from src.models.api_models import GeminiPromptModel
+from src.services.climate_data_service import get_climate_context
 
 load_dotenv()
 
 os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
 os.environ.pop("GOOGLE_API_KEY", None)
 client = genai.Client(api_key=os.getenv("GEMINI_KEY"))
-open_meteo = os.getenv("OPEN_METEO_URL")
 
-def get_climate_context():
-
-    latitude, longitude = 21.5601, 50.3045
-
-    params = {
-        "latitude": latitude,
-        "longitude": longitude,
-
-        "current": [
-            "temperature_2m",
-            "apparent_temperature",
-        ],
-
-        "daily": [
-            "temperature_2m_max",
-            "temperature_2m_min",
-            "precipitation_probability_max",
-        ],
-    }
-
-    response = requests.get(open_meteo, params=params, timeout=10)
-    response.raise_for_status()
-    data = response.json()
-
-    current = data["current"]
-    daily = data["daily"]
-
-    context_prompt: list = []
-
-    if current["temperature_2m"] >= 25:
-        context_prompt.append(
-            "Temperatura moderada à alta indica melhor venda de bebidas que são servidas geladas, considere o frescor de uma bebida trincando"
-            ) 
-
-    elif current["temperature_2m"] < 25:
-        context_prompt.append(
-            "Temperatura moderada à baixa indica melhor venda de bebidas que esquentam, conseidere o calor do alcool"
-            )
-
-    return context_prompt
+def get_score(opportunities: list) -> dict:
+    pass
 
 def gemini_response(
         nicho: str,
