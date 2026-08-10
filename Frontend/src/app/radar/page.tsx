@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/ace/TopBar";
+import { useAuth } from "@/app/auth-context";
 import type { Holiday, Escopo } from "@/lib/holidays";
 import {
   fetchOpportunities,
@@ -177,6 +178,18 @@ const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function RadarPage() {
   const router = useRouter();
+  const { profile } = useAuth();
+
+  const saudacao = useMemo(() => {
+    const hora = new Date().getHours();
+    let text = "Bom dia";
+    if (hora >= 12 && hora < 18) {
+      text = "Boa tarde";
+    } else if (hora >= 18 || hora < 5) {
+      text = "Boa noite";
+    }
+    return profile?.company_name ? `${text}, ${profile.company_name}` : text;
+  }, [profile]);
   const [holidays, setHolidays] = useState<Enriched[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -318,7 +331,7 @@ export default function RadarPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="animate-float-up">
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Bom dia <span className="inline-block">👋</span>
+              {saudacao} <span className="inline-block">👋</span>
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Calendário de oportunidades de campanha (Supabase Sync)</p>
           </div>

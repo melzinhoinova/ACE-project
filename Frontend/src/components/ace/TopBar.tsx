@@ -3,9 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AceLogo } from "./AceLogo";
-import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
+import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings } from "lucide-react";
 import { useState } from "react";
 import { ACE_USER } from "@/lib/ace-mock";
+import { useAuth } from "@/app/auth-context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const STEPS = [
   { to: "/radar", label: "Radar", icon: Calendar },
@@ -23,6 +32,7 @@ export function TopBar({ children }: AppShellProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, profile, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row bg-background">
@@ -86,20 +96,58 @@ export function TopBar({ children }: AppShellProps) {
           </button>
 
           {/* User Profile Info */}
-          <div 
-            className={`flex items-center gap-3 rounded-2xl border border-border/80 bg-card/40 transition-all ${isCollapsed ? "justify-center p-2" : "p-3"}`}
-            title={isCollapsed ? `${ACE_USER.firstName} (${ACE_USER.company})` : undefined}
-          >
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-brand text-sm font-bold text-white">
-              {ACE_USER.firstName[0]}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className={`flex items-center gap-3 w-full rounded-2xl border border-border/80 bg-card/40 text-left transition-all hover:bg-card/80 active:scale-[0.98] cursor-pointer outline-none ${isCollapsed ? "justify-center p-2" : "p-3"}`}
+                  title={isCollapsed ? `${profile?.company_name || user.email}` : undefined}
+                >
+                  {profile?.avatar_url ? (
+                    <img 
+                      src={profile.avatar_url} 
+                      alt="Logo da empresa" 
+                      className="h-9 w-9 shrink-0 rounded-full object-cover border border-border/60"
+                    />
+                  ) : (
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-brand text-sm font-bold text-white uppercase">
+                      {(profile?.company_name || user.email || "M")[0]}
+                    </div>
+                  )}
+                  {!isCollapsed && (
+                    <div className="text-xs leading-tight truncate flex-1">
+                      <div className="font-semibold text-foreground truncate">{profile?.company_name || "Minha Empresa"}</div>
+                      <div className="text-muted-foreground truncate text-[10px]">{user.email}</div>
+                    </div>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border/60 bg-card/90 backdrop-blur-md">
+                <DropdownMenuLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Minha Empresa</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border/40" />
+                <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 focus:text-foreground cursor-pointer">
+                  <Link href="/perfil" className="flex items-center gap-2 py-2 w-full">
+                    <UserIcon size={14} />
+                    <span>Configurações do Perfil</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/40" />
+                <DropdownMenuItem 
+                  onClick={logout} 
+                  className="rounded-xl focus:bg-red-500/10 focus:text-red-500 text-red-500 font-semibold cursor-pointer flex items-center gap-2 py-2"
+                >
+                  <LogOut size={14} />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className={`p-2 ${isCollapsed ? "text-center" : ""}`}>
+              <Link href="/login" className="text-xs font-bold text-brand hover:underline">
+                Fazer Login
+              </Link>
             </div>
-            {!isCollapsed && (
-              <div className="text-xs leading-tight truncate">
-                <div className="font-semibold text-foreground truncate">{ACE_USER.firstName}</div>
-                <div className="text-muted-foreground truncate">{ACE_USER.company}</div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </aside>
 
@@ -114,6 +162,48 @@ export function TopBar({ children }: AppShellProps) {
               <Bell size={16} />
               <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-gradient-brand" />
             </button>
+
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/80 text-muted-foreground hover:text-foreground active:scale-95 cursor-pointer outline-none">
+                    {profile?.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt="Logo" 
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center rounded-full bg-gradient-brand text-xs font-bold text-white uppercase">
+                        {(profile?.company_name || user.email || "M")[0]}
+                      </div>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border/60 bg-card/90 backdrop-blur-md">
+                  <DropdownMenuLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{profile?.company_name || "Minha Empresa"}</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border/40" />
+                  <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 cursor-pointer">
+                    <Link href="/perfil" className="flex items-center gap-2 py-2 w-full">
+                      <UserIcon size={14} />
+                      <span>Configurações do Perfil</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border/40" />
+                  <DropdownMenuItem 
+                    onClick={logout} 
+                    className="rounded-xl focus:bg-red-500/10 focus:text-red-500 text-red-500 font-semibold cursor-pointer flex items-center gap-2 py-2"
+                  >
+                    <LogOut size={14} />
+                    <span>Sair</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login" className="text-xs font-bold text-brand hover:underline">
+                Login
+              </Link>
+            )}
             <button
               onClick={() => setOpen((v) => !v)}
               className="grid h-10 w-10 place-items-center rounded-full border border-border/80 text-muted-foreground hover:text-foreground"
