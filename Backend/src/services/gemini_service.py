@@ -10,6 +10,7 @@ import io
 import json
 
 from src.models.api_models import GeminiPromptModel
+from src.models.api_models import OpportunityResponse, ScoreResponse
 from src.services.climate_data_service import get_climate_context
 
 load_dotenv()
@@ -18,8 +19,56 @@ os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
 os.environ.pop("GOOGLE_API_KEY", None)
 client = genai.Client(api_key=os.getenv("GEMINI_KEY"))
 
-def get_score(opportunities: list) -> dict:
-    pass
+def remove_additional_properties(schema: dict) -> dict:
+    """
+    Remove recursivamente a chave 'additionalProperties' de um JSON Schema 
+    para torná-lo compatível com a Gemini Developer API.
+    """
+    if not isinstance(schema, dict):
+        return schema
+    
+    cleaned = {}
+    for key, value in schema.items():
+        if key == "additionalProperties":
+            continue # Ignora a chave problemática
+            
+        if isinstance(value, dict):
+            cleaned[key] = remove_additional_properties(value)
+        elif isinstance(value, list):
+            cleaned[key] = [
+                remove_additional_properties(item) if isinstance(item, dict) else item 
+                for item in value
+            ]
+        else:
+            cleaned[key] = value
+            
+    return cleaned
+
+def get_score(opportunities: list[OpportunityResponse]) -> dict:
+
+    prompt: str = f"""
+    Você é um especialista em marketing digital. Para cada oportunidade (OpportunityResponse) na lista,
+    atribua um score de high, medium, low de acordo com o quão vantajosa aquela oportunidade será para gerar vendas
+    em uma campanha de marketing atualmente. Leve em consideração notícias atuais e pesquisas de mercado.
+    opportunities: {opportunities}
+    """
+
+    model = 'gemini-flash-lite-latest'
+
+    raw_schema = ScoreResponse.model_json_schema()
+    safe_schema = remove_additional_properties(raw_schema)
+
+    response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=safe_schema
+            )
+        )
+
+    dados = json.loads(response.text)
+    return dados
 
 def gemini_response(
         nicho: str,

@@ -66,3 +66,9 @@ class CampaignDbResponse(BaseModel):
         "from_attributes": True
     }
 
+class ScoreModel(BaseModel):
+    opportunity: OpportunityResponse = Field(description="Objeto que representa a oportunidade")
+    score: str = Field(description="Score da oportunidade")
+
+class ScoreResponse(BaseModel):
+    scores: list[ScoreModel]
