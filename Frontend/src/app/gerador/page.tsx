@@ -38,8 +38,7 @@ function ArtPreview({
   uploaded: string | null; 
   generated: string | null; 
 }) {
-  if (!v) return null;
-  const imageSrc = (generated ? `data:image/png;base64,${generated}` : null) || uploaded;
+  const imageSrc = (generated?.startsWith("http") ? generated : (generated ? `data:image/png;base64,${generated}` : null)) || uploaded;
   
   return (
     <div className="relative aspect-square w-full overflow-hidden rounded-2xl shadow-card" style={{ background: v.art.bg }}>
@@ -165,8 +164,11 @@ export default function GeradorPage() {
       setGenerated(data.imagem_instagram);
       setGeneratedCopy(data.legenda_instagram);
       
-      sessionStorage.setItem("ace.generatedImage", data.imagem_instagram);
-      sessionStorage.setItem("ace.generatedCopy", data.legenda_instagram);
+      sessionStorage.setItem("ace.generatedImage", data.imagem_instagram || "");
+      sessionStorage.setItem("ace.generatedCopy", data.legenda_instagram || "");
+      sessionStorage.setItem("ace.originalImageUrl", data.original_image_url || "");
+      sessionStorage.setItem("ace.fidelityScore", data.fidelity_score !== null && data.fidelity_score !== undefined ? String(data.fidelity_score) : "");
+      sessionStorage.setItem("ace.approved", data.approved !== null && data.approved !== undefined ? String(data.approved) : "");
       
       setStage("ready");
     } catch (err: any) {
@@ -242,6 +244,9 @@ export default function GeradorPage() {
     } else {
       sessionStorage.removeItem("ace.uploadedImage");
       sessionStorage.removeItem("ace.generatedImage");
+      sessionStorage.removeItem("ace.originalImageUrl");
+      sessionStorage.removeItem("ace.fidelityScore");
+      sessionStorage.removeItem("ace.approved");
       setGenerated(null);
     }
     if (fileRef.current) fileRef.current.value = "";

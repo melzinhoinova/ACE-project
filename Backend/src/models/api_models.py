@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import date as dt
 from typing import Optional
 
@@ -35,22 +35,40 @@ class OpportunityResponse(BaseModel):
 class GeminiPromptModel(BaseModel):
     titulo_campanha: str = Field(description="Título interno da campanha")
     legenda_instagram: str = Field(description="Legenda engajadora com hashtags e gatilhos mentais")
-    sugestao_prompt_imagem: str = Field(description="Prompt em inglês detalhado para gerar o fundo comercial ideal para este produto")
+    sugestao_prompt_imagem: str = Field(description="Prompt em inglês detalhado descrevendo apenas o CENÁRIO/fundo comercial — não descreve o produto fisicamente")
 
-# modelo de retorno da campanha finalizada
+# modelo de retorno da campanha finalizada (resposta do /api/campanha)
 class CampaignModel(BaseModel):
     titulo: str
     legenda_instagram: str
-    imagem_instagram: str
+    # NOVO: agora é a URL da imagem no Cloudinary (não mais base64), e pode
+    # vir None quando a campanha foi gerada sem foto de produto.
+    imagem_instagram: Optional[str] = None
+    # NOVO — rastreio de fidelidade do images.edit
+    original_image_url: Optional[str] = None
+    fidelity_score: Optional[float] = None
+    approved: bool = False
 
-# modelo de criação de campanha no Supabase
+# modelo de criação de campanha no Supabase (usado em POST /api/campanhas)
 class CampaignCreate(BaseModel):
     title: str
     campaign: str
     description: Optional[str] = None
     date: dt
     opportunity: str
-    id_PostInstagram: Optional[int] = None
+    id_PostInstagram: Optional[str] = None
+    
+    original_image_url: Optional[str] = None
+    fidelity_score: Optional[float] = None
+    approved: bool = False
+    generation_attempts: Optional[list] = None
+
+    @field_validator("id_PostInstagram", mode="before")
+    @classmethod
+    def coerce_id_to_str(cls, v):
+        if v is not None:
+            return str(v)
+        return v
 
 # modelo de resposta de campanha vinda do Supabase
 class CampaignDbResponse(BaseModel):
@@ -60,9 +78,19 @@ class CampaignDbResponse(BaseModel):
     description: Optional[str] = None
     date: dt
     opportunity: str
-    id_PostInstagram: Optional[int] = None
+    id_PostInstagram: Optional[str] = None
+    original_image_url: Optional[str] = None
+    fidelity_score: Optional[float] = None
+    approved: bool = False
+    generation_attempts: Optional[list] = None
 
     model_config = {
         "from_attributes": True
     }
 
+    @field_validator("id_PostInstagram", mode="before")
+    @classmethod
+    def coerce_id_to_str(cls, v):
+        if v is not None:
+            return str(v)
+        return v

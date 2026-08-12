@@ -29,6 +29,9 @@ export default function AprovarPage() {
   const [uploaded, setUploaded] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedCopy, setGeneratedCopy] = useState<string | null>(null);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const [fidelityScore, setFidelityScore] = useState<number | null>(null);
+  const [approved, setApproved] = useState<boolean>(false);
 
   useEffect(() => {
     const storedHoliday = sessionStorage.getItem("ace.selectedHoliday");
@@ -47,6 +50,15 @@ export default function AprovarPage() {
 
     const storedGenCopy = sessionStorage.getItem("ace.generatedCopy");
     if (storedGenCopy) setGeneratedCopy(storedGenCopy);
+
+    const storedOriginalUrl = sessionStorage.getItem("ace.originalImageUrl");
+    if (storedOriginalUrl) setOriginalImageUrl(storedOriginalUrl);
+
+    const storedFidelityScore = sessionStorage.getItem("ace.fidelityScore");
+    if (storedFidelityScore) setFidelityScore(Number(storedFidelityScore));
+
+    const storedApproved = sessionStorage.getItem("ace.approved");
+    if (storedApproved) setApproved(storedApproved === "true");
   }, []);
   
   const activeVariant = useMemo(() => {
@@ -76,21 +88,26 @@ export default function AprovarPage() {
 
     try {
       if (base64Image) {
-        console.log("Iniciando upload da imagem via Cloudinary (backend)...");
-
-        const uploadResponse = await fetch("http://127.0.0.1:8000/api/upload-imagem", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_base64: base64Image }),
-        });
-
-        const uploadData = await uploadResponse.json();
-
-        if (uploadResponse.ok && uploadData.url) {
-          imageUrl = uploadData.url;
-          console.log("Imagem hospedada com sucesso no Cloudinary:", imageUrl);
+        if (base64Image.startsWith("http")) {
+          imageUrl = base64Image;
+          console.log("Imagem já está hospedada no Cloudinary:", imageUrl);
         } else {
-          throw new Error("Falha ao hospedar a imagem no Cloudinary. " + JSON.stringify(uploadData));
+          console.log("Iniciando upload da imagem via Cloudinary (backend)...");
+
+          const uploadResponse = await fetch("http://127.0.0.1:8000/api/upload-imagem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_base64: base64Image }),
+          });
+
+          const uploadData = await uploadResponse.json();
+
+          if (uploadResponse.ok && uploadData.url) {
+            imageUrl = uploadData.url;
+            console.log("Imagem hospedada com sucesso no Cloudinary:", imageUrl);
+          } else {
+            throw new Error("Falha ao hospedar a imagem no Cloudinary. " + JSON.stringify(uploadData));
+          }
         }
       }
 
@@ -107,7 +124,7 @@ export default function AprovarPage() {
 
       if (response.ok) {
         const postData = await response.json().catch(() => ({}));
-        const rawPostId = postData.post_id ? parseInt(postData.post_id, 10) : undefined;
+        const rawPostId = postData.post_id ? String(postData.post_id) : undefined;
         const oppId = typeof holiday.id === "number" ? holiday.id : (holiday.rawId ? Number(holiday.rawId) : 1);
 
         // Salvar a campanha no Supabase
@@ -118,8 +135,12 @@ export default function AprovarPage() {
             campaign: caption,
             description: `Imagem Cloudinary: ${imageUrl}`,
             date: new Date().toISOString().split("T")[0],
-            id_opportunity: oppId,
-            id_PostInstagram: isNaN(rawPostId!) ? undefined : rawPostId,
+            opportunity: String(oppId),
+            id_PostInstagram: rawPostId || undefined,
+            original_image_url: originalImageUrl || undefined,
+            fidelity_score: fidelityScore !== null && !isNaN(fidelityScore!) ? fidelityScore : undefined,
+            approved: approved,
+            generation_attempts: [],
           });
           console.log("Campanha gravada com sucesso no Supabase!");
         } catch (dbErr) {

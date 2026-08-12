@@ -29,7 +29,7 @@ function InstagramMock({
 }) {
   if (!variant) return null;
   const v = variant;
-  const imageSrc = (generated ? `data:image/png;base64,${generated}` : null) || uploaded;
+  const imageSrc = (generated?.startsWith("http") ? generated : (generated ? `data:image/png;base64,${generated}` : null)) || uploaded;
   const copyText = generatedCopy || v.copy;
   
   return (

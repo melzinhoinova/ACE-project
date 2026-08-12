@@ -85,8 +85,12 @@ export type CampaignInput = {
   campaign: string;
   description?: string;
   date: string; // YYYY-MM-DD
-  id_opportunity: number;
-  id_PostInstagram?: number;
+  opportunity: string;
+  id_PostInstagram?: string;
+  original_image_url?: string;
+  fidelity_score?: number;
+  approved?: boolean;
+  generation_attempts?: any[];
 };
 
 export type CampaignDb = {
@@ -95,8 +99,12 @@ export type CampaignDb = {
   campaign: string;
   description?: string | null;
   date: string;
-  id_opportunity: number;
-  id_PostInstagram?: number | null;
+  opportunity: string;
+  id_PostInstagram?: string | null;
+  original_image_url?: string | null;
+  fidelity_score?: number | null;
+  approved?: boolean;
+  generation_attempts?: any[] | null;
 };
 
 export async function saveCampaign(data: CampaignInput): Promise<CampaignDb> {
@@ -112,9 +120,9 @@ export async function saveCampaign(data: CampaignInput): Promise<CampaignDb> {
   return await res.json();
 }
 
-export async function fetchCampaigns(opportunityId?: number): Promise<CampaignDb[]> {
-  const url = opportunityId
-    ? `${API_BASE_URL}/api/campanhas?opportunity_id=${opportunityId}`
+export async function fetchCampaigns(opportunity?: string): Promise<CampaignDb[]> {
+  const url = opportunity
+    ? `${API_BASE_URL}/api/campanhas?opportunity=${opportunity}`
     : `${API_BASE_URL}/api/campanhas`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
