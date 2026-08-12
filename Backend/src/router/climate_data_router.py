@@ -7,5 +7,5 @@ router = APIRouter()
 @router.get("/api/climateforecast")
 def get_forecast():
 
-    forecast_text = get_climate_forecast()
-    return {"forecast": forecast_text}
+    forecast_data = get_climate_forecast()
+    return {"forecast": forecast_data}

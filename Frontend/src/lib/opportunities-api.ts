@@ -7,6 +7,7 @@ export type Opportunity = {
   date: string; // ISO date string (YYYY-MM-DD)
   escopo?: Escopo;
   local?: string | null;
+  score?: "high" | "medium" | "low";
 };
 
 export type OpportunityCreateInput = {
@@ -35,7 +36,14 @@ export async function fetchOpportunities(all: boolean = true): Promise<Opportuni
     if (!res.ok) {
       throw new Error(`Erro ao buscar oportunidades (${res.status})`);
     }
-    return await res.json();
+    const data = await res.json();
+    if (data && data.scores && Array.isArray(data.scores)) {
+      return data.scores.map((item: any) => ({
+        ...item.opportunity,
+        score: item.score,
+      }));
+    }
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.warn("Falha ao buscar do backend FastAPI, tentando fallback local...", error);
     throw error;

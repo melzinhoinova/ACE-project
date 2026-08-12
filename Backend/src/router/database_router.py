@@ -6,10 +6,11 @@ from src.dependencies.api_dependency import get_db
 
 from src.repositories.opportunity_repository import OpportunityRepository
 from src.repositories.campaign_repository import CampaignRepository
+from src.services.gemini_service import get_score
 
 from src.models.api_models import (
     OpportunityCreate, OpportunityUpdate, OpportunityResponse,
-    CampaignCreate, CampaignDbResponse
+    CampaignCreate, CampaignDbResponse, ScoreResponse
 )
 
 router: APIRouter = APIRouter()
@@ -17,11 +18,15 @@ router: APIRouter = APIRouter()
 repository: OpportunityRepository = OpportunityRepository()
 campaign_repo: CampaignRepository = CampaignRepository()
 
-@router.get("/api/oportunidades", response_model=list[OpportunityResponse])
+@router.get("/api/oportunidades", response_model=ScoreResponse)
 async def get_opportunities(all: bool = False, db: Session = Depends(get_db)):
     if all:
-        return repository.get_all(db)
-    return repository.get_current_month_opportunities(db)
+        opportunities = repository.get_all(db)
+    else:
+        opportunities = repository.get_current_month_opportunities(db)
+    
+    resultado_gemini = get_score(opportunities)
+    return resultado_gemini
 
 @router.get("/api/oportunidades/{opportunity_id}", response_model=OpportunityResponse)
 async def get_opportunity(opportunity_id: int, db: Session = Depends(get_db)):

@@ -39,7 +39,7 @@ type Enriched = {
   escopo: Escopo;
   local?: string;
   date: Date;
-  score: number;
+  score: "high" | "medium" | "low";
   audience: number;
   ticket: string;
   coupon: string;
@@ -113,6 +113,18 @@ function seedFrom(s: string) {
   return h;
 }
 
+function numericScoreToString(s: number): "high" | "medium" | "low" {
+  if (s >= 80) return "high";
+  if (s >= 60) return "medium";
+  return "low";
+}
+
+function formatScore(s: "high" | "medium" | "low") {
+  if (s === "high") return "Alto";
+  if (s === "medium") return "Médio";
+  return "Baixo";
+}
+
 function enrichOpportunity(item: Opportunity | Holiday): Enriched {
   const isApi = "title" in item;
   const title = isApi ? item.title : item.nome;
@@ -138,6 +150,9 @@ function enrichOpportunity(item: Opportunity | Holiday): Enriched {
   })();
   const m = meta ?? fallback;
 
+  const scoreFromItem = isApi ? (item as Opportunity).score : undefined;
+  const scoreVal = scoreFromItem || numericScoreToString(m.score);
+
   return {
     id: idStr,
     rawId: typeof item.id === "number" ? item.id : undefined,
@@ -150,7 +165,7 @@ function enrichOpportunity(item: Opportunity | Holiday): Enriched {
     local,
     date: dateObj,
     daysAway: daysBetween(dateObj, TODAY),
-    score: m.score,
+    score: scoreVal,
     audience: m.audience,
     ticket: m.ticket,
     coupon: m.coupon,
@@ -159,14 +174,14 @@ function enrichOpportunity(item: Opportunity | Holiday): Enriched {
   };
 }
 
-function scoreColor(s: number) {
-  if (s >= 80) return "text-[oklch(0.78_0.18_155)]";
-  if (s >= 60) return "text-[oklch(0.85_0.16_85)]";
+function scoreColor(s: "high" | "medium" | "low") {
+  if (s === "high") return "text-[oklch(0.78_0.18_155)]";
+  if (s === "medium") return "text-[oklch(0.85_0.16_85)]";
   return "text-[oklch(0.70_0.22_25)]";
 }
-function scoreBg(s: number) {
-  if (s >= 80) return "bg-[oklch(0.78_0.18_155/0.15)] border-[oklch(0.78_0.18_155/0.30)]";
-  if (s >= 60) return "bg-[oklch(0.85_0.16_85/0.15)] border-[oklch(0.85_0.16_85/0.30)]";
+function scoreBg(s: "high" | "medium" | "low") {
+  if (s === "high") return "bg-[oklch(0.78_0.18_155/0.15)] border-[oklch(0.78_0.18_155/0.30)]";
+  if (s === "medium") return "bg-[oklch(0.85_0.16_85/0.15)] border-[oklch(0.85_0.16_85/0.30)]";
   return "bg-[oklch(0.70_0.22_25/0.15)] border-[oklch(0.70_0.22_25/0.30)]";
 }
 
@@ -680,7 +695,7 @@ function CalendarGrid({
                 {isHot && <Flame size={11} className="text-[oklch(0.78_0.18_25)]" />}
               </div>
               <div className="mt-0.5 truncate text-[9px] font-medium text-foreground/90">{h.nome}</div>
-              <div className={`text-[9px] font-bold ${scoreColor(h.score)}`}>{h.score}%</div>
+              <div className={`text-[9px] font-bold ${scoreColor(h.score)}`}>{formatScore(h.score)}</div>
             </button>
           );
         })}
@@ -738,7 +753,7 @@ function UpcomingList({
               </button>
               
               <div className="flex items-center gap-1">
-                <span className={`text-xs font-bold ${scoreColor(h.score)} mr-1`}>{h.score}%</span>
+                <span className={`text-xs font-bold ${scoreColor(h.score)} mr-1`}>{formatScore(h.score)}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

@@ -8,7 +8,9 @@ from PIL import Image
 from google import genai
 from google.genai import types
 
+from pydantic import BaseModel, Field
 from src.models.api_models import GeminiPromptModel
+from src.models.api_models import OpportunityResponse, ScoreResponse
 from src.services.climate_data_service import get_climate_context
 
 load_dotenv()
@@ -18,6 +20,96 @@ os.environ.pop("GOOGLE_API_KEY", None)
 client = genai.Client(api_key=os.getenv("GEMINI_KEY"))
 
 TEXT_MODEL = "gemini-flash-lite-latest"
+
+
+class OpportunityScoreItem(BaseModel):
+    id: int = Field(description="ID da oportunidade correspondente")
+    score: str = Field(description="Classificação da oportunidade: high, medium, ou low")
+
+
+class GeminiScoreResponse(BaseModel):
+    scores: list[OpportunityScoreItem]
+
+
+def remove_additional_properties(schema: dict) -> dict:
+    """
+    Remove recursivamente a chave 'additionalProperties' de um JSON Schema
+    para torná-lo compatível com a Gemini Developer API.
+    """
+    if not isinstance(schema, dict):
+        return schema
+
+    cleaned = {}
+    for key, value in schema.items():
+        if key == "additionalProperties":
+            continue  # Ignora a chave problemática
+
+        if isinstance(value, dict):
+            cleaned[key] = remove_additional_properties(value)
+        elif isinstance(value, list):
+            cleaned[key] = [
+                remove_additional_properties(item) if isinstance(item, dict) else item
+                for item in value
+            ]
+        else:
+            cleaned[key] = value
+
+    return cleaned
+
+
+def get_score(opportunities: list[OpportunityResponse]) -> dict:
+    opps_serializadas = []
+    for opp in opportunities:
+        opp_id = getattr(opp, "id", None)
+        opp_title = getattr(opp, "title", None)
+        opp_desc = getattr(opp, "description", None)
+        opp_date = getattr(opp, "date", None)
+
+        opps_serializadas.append({
+            "id": opp_id,
+            "title": opp_title,
+            "description": opp_desc or "",
+            "date": str(opp_date) if opp_date else ""
+        })
+
+    prompt: str = f"""
+    Você é um especialista em marketing digital. Para cada oportunidade na lista,
+    atribua um score de high, medium, low de acordo com o quão vantajosa aquela oportunidade será para gerar vendas
+    em uma campanha de marketing atualmente. Leve em consideração notícias atuais e pesquisas de mercado.
+    
+    opportunities: {opps_serializadas}
+    """
+
+    raw_schema = GeminiScoreResponse.model_json_schema()
+    safe_schema = remove_additional_properties(raw_schema)
+
+    response = client.models.generate_content(
+        model=TEXT_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=safe_schema
+        )
+    )
+
+    dados = json.loads(response.text)
+
+    scores_dict = {}
+    if "scores" in dados and isinstance(dados["scores"], list):
+        for item in dados["scores"]:
+            if isinstance(item, dict) and "id" in item and "score" in item:
+                scores_dict[item["id"]] = item["score"]
+
+    final_scores = []
+    for opp in opportunities:
+        opp_id = getattr(opp, "id", None)
+        score_val = scores_dict.get(opp_id, "medium")
+        final_scores.append({
+            "opportunity": opp,
+            "score": score_val
+        })
+
+    return {"scores": final_scores}
 
 
 @dataclass

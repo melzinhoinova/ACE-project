@@ -41,10 +41,10 @@ class GeminiPromptModel(BaseModel):
 class CampaignModel(BaseModel):
     titulo: str
     legenda_instagram: str
-    # NOVO: agora é a URL da imagem no Cloudinary (não mais base64), e pode
+    # agora é a URL da imagem no Cloudinary (não mais base64), e pode
     # vir None quando a campanha foi gerada sem foto de produto.
     imagem_instagram: Optional[str] = None
-    # NOVO — rastreio de fidelidade do images.edit
+    # rastreio de fidelidade do images.edit
     original_image_url: Optional[str] = None
     fidelity_score: Optional[float] = None
     approved: bool = False
@@ -57,7 +57,7 @@ class CampaignCreate(BaseModel):
     date: dt
     opportunity: str
     id_PostInstagram: Optional[str] = None
-    
+
     original_image_url: Optional[str] = None
     fidelity_score: Optional[float] = None
     approved: bool = False
@@ -94,3 +94,11 @@ class CampaignDbResponse(BaseModel):
         if v is not None:
             return str(v)
         return v
+
+
+class ScoreModel(BaseModel):
+    opportunity: OpportunityResponse = Field(description="Objeto que representa a oportunidade")
+    score: str = Field(description="Score da oportunidade")
+
+class ScoreResponse(BaseModel):
+    scores: list[ScoreModel]
