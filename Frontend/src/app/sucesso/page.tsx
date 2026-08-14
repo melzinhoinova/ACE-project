@@ -82,10 +82,12 @@ export default function DashboardSucessoPage() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [loadingPost, setLoadingPost] = useState(false);
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
   const fetchPostMetrics = async (mediaId: string) => {
     setLoadingPost(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/instagram/dashboard/post/${mediaId}`, {
+      const res = await fetch(`${API_BASE}/api/instagram/dashboard/post/${mediaId}`, {
         cache: "no-store",
         headers: { 'Cache-Control': 'no-cache' }
       });
@@ -102,7 +104,7 @@ export default function DashboardSucessoPage() {
   const fetchRecentPost = async () => {
     setLoadingPost(true);
     try {
-      const resPost = await fetch("http://127.0.0.1:8000/api/instagram/dashboard/post/recente", {
+      const resPost = await fetch(`${API_BASE}/api/instagram/dashboard/post/recente`, {
         cache: "no-store",
         headers: { 'Cache-Control': 'no-cache' }
       });
@@ -118,7 +120,7 @@ export default function DashboardSucessoPage() {
     async function carregarDashboard() {
       try {
         // 1. Carrega dados gerais da conta
-        const resGeral = await fetch("http://127.0.0.1:8000/api/instagram/dashboard/geral", {
+        const resGeral = await fetch(`${API_BASE}/api/instagram/dashboard/geral`, {
           cache: "no-store",
           headers: { 'Cache-Control': 'no-cache' }
         });

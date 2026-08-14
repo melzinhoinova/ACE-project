@@ -149,7 +149,8 @@ export default function GeradorPage() {
         });
       }
 
-      const res = await fetch("http://127.0.0.1:8000/api/campanha", {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const res = await fetch(`${API_BASE}/api/campanha`, {
         method: "POST",
         body: formData,
       });

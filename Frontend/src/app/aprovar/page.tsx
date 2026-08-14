@@ -86,6 +86,8 @@ export default function AprovarPage() {
     
     let imageUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000"; 
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
     try {
       if (base64Image) {
         if (base64Image.startsWith("http")) {
@@ -94,7 +96,7 @@ export default function AprovarPage() {
         } else {
           console.log("Iniciando upload da imagem via Cloudinary (backend)...");
 
-          const uploadResponse = await fetch("http://127.0.0.1:8000/api/upload-imagem", {
+          const uploadResponse = await fetch(`${API_BASE}/api/upload-imagem`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ image_base64: base64Image }),
@@ -111,7 +113,7 @@ export default function AprovarPage() {
         }
       }
 
-      const response = await fetch("http://127.0.0.1:8000/api/instagram/postar", {
+      const response = await fetch(`${API_BASE}/api/instagram/postar`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

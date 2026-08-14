@@ -238,7 +238,8 @@ export default function RadarPage() {
       }
     } catch (e: unknown) {
       console.error("Erro ao conectar com Supabase:", e);
-      setError("Backend FastAPI indisponível em http://127.0.0.1:8000. Certifique-se de que o uvicorn está rodando.");
+      const apiHost = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      setError(`Backend FastAPI indisponível em ${apiHost}. Certifique-se de que o servidor está rodando.`);
     } finally {
       setLoading(false);
     }
