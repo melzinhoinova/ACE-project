@@ -310,7 +310,7 @@ export default function DashboardSucessoPage() {
               {/* CARDS DO POST SELECIONADO */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <Metric icon={<Heart size={20} className="text-red-500 fill-red-500" />} label="Curtidas Disponíveis" value={postLikes.toString()} sub="Engajamento ativo na publicação" delay={0} />
-                <Metric icon={<BarChart3 size={20} className="text-brand" />} label="Alcance Dedicado" value={postReach.toLocaleString("pt-BR")} sub="Pessoas que receberam o post no feed" delay={100} />
+                <Metric icon={<BarChart3 size={20} className="text-brand" />} label="Alcance Dedicado" value={postReach.toLocaleString("pt-BR")} sub="Pessoas alcançadas pela publicação" delay={100} />
                 <Metric icon={<MessageSquare size={20} className="text-brand" />} label="Comentários Totais" value={postCommentsCount.toString()} sub="Interações discursivas catalogadas" delay={200} pulse />
               </div>
 

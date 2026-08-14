@@ -147,7 +147,7 @@ export default function AprovarPage() {
           console.warn("Aviso ao gravar campanha no Supabase:", dbErr);
         }
 
-        router.push("/feed");
+        router.push("/sucesso");
       } else {
 
         const errData = await response.json().catch(() => null);

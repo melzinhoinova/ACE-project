@@ -314,7 +314,7 @@ export default function RadarPage() {
       setIsModalOpen(false);
       await loadData();
     } catch (err: unknown) {
-      alert((err as Error).message || "Erro ao salvar no Supabase");
+      alert((err as Error).message || "Erro ao salvar oportunidade");
     } finally {
       setIsSaving(false);
     }
@@ -334,7 +334,7 @@ export default function RadarPage() {
       }
       await loadData();
     } catch (err: unknown) {
-      alert((err as Error).message || "Erro ao excluir do Supabase");
+      alert((err as Error).message || "Erro ao excluir oportunidade");
     } finally {
       setIsDeleting(false);
     }
@@ -348,7 +348,7 @@ export default function RadarPage() {
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
               {saudacao} <span className="inline-block">👋</span>
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Calendário de oportunidades de campanha (Supabase Sync)</p>
+            <p className="mt-1 text-sm text-muted-foreground">Calendário estratégico de oportunidades e datas comemorativas</p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -377,7 +377,7 @@ export default function RadarPage() {
         {loading ? (
           <div className="mt-10 grid place-items-center rounded-3xl card-surface p-16">
             <div className="flex items-center gap-3 text-muted-foreground">
-              <Loader2 className="animate-spin" size={18} /> Carregando oportunidades do Supabase…
+              <Loader2 className="animate-spin" size={18} /> Carregando oportunidades…
             </div>
           </div>
         ) : selected ? (
@@ -537,7 +537,7 @@ export default function RadarPage() {
                   disabled={isSaving}
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-brand px-5 py-2 text-xs font-semibold text-white glow-brand hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                 >
-                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : "Salvar no Supabase"}
+                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : "Salvar Oportunidade"}
                 </button>
               </div>
             </form>

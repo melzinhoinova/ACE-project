@@ -107,12 +107,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setLoading(true);
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Erro ao realizar logout no Supabase:", err);
+    }
+    // Expira os cookies de autenticação
     document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     setUser(null);
+    setSession(null);
     setProfile(null);
     setLoading(false);
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   return (

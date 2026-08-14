@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AceLogo } from "./AceLogo";
-import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings } from "lucide-react";
+import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { ACE_USER } from "@/lib/ace-mock";
 import { useAuth } from "@/app/auth-context";
@@ -20,7 +20,6 @@ const STEPS = [
   { to: "/radar", label: "Radar", icon: Calendar },
   { to: "/gerador", label: "Estúdio de Criação", icon: Wand2 },
   { to: "/aprovar", label: "Automação", icon: Zap },
-  { to: "/feed", label: "Feed", icon: Camera },
   { to: "/sucesso", label: "Resultados", icon: BarChart3 },
 ] as const;
 
@@ -131,6 +130,12 @@ export function TopBar({ children }: AppShellProps) {
                     <span>Configurações do Perfil</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 focus:text-foreground cursor-pointer">
+                  <Link href="/admin" className="flex items-center gap-2 py-2 w-full">
+                    <ShieldCheck size={14} />
+                    <span>Gestão & Convites (Admin)</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/40" />
                 <DropdownMenuItem 
                   onClick={logout} 
@@ -187,6 +192,12 @@ export function TopBar({ children }: AppShellProps) {
                     <Link href="/perfil" className="flex items-center gap-2 py-2 w-full">
                       <UserIcon size={14} />
                       <span>Configurações do Perfil</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 cursor-pointer">
+                    <Link href="/admin" className="flex items-center gap-2 py-2 w-full">
+                      <ShieldCheck size={14} />
+                      <span>Gestão & Convites (Admin)</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border/40" />
