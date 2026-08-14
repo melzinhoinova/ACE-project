@@ -54,26 +54,7 @@ export default function AdminPage() {
         try { return JSON.parse(stored); } catch { /* ignore */ }
       }
     }
-    return [
-      {
-        id: "inv-101",
-        email: "diretoria@aguadoce.com.br",
-        companyName: "Água Doce Cachaçaria",
-        role: "Brand Manager",
-        createdAt: "14/08/2026",
-        status: "Aceito",
-        inviteUrl: typeof window !== "undefined" ? `${window.location.origin}/login?invite=aguadoce-token-9982&email=diretoria@aguadoce.com.br&company=%C3%81gua%20Doce%20Cacha%C3%A7aria` : "",
-      },
-      {
-        id: "inv-102",
-        email: "contato@melzinhodosertao.com",
-        companyName: "Melzinho do Sertão",
-        role: "Brand Manager",
-        createdAt: "14/08/2026",
-        status: "Aceito",
-        inviteUrl: typeof window !== "undefined" ? `${window.location.origin}/login?invite=melzinho-token-8871&email=contato@melzinhodosertao.com&company=Melzinho%20do%20Sert%C3%A3o` : "",
-      },
-    ];
+    return [];
   });
 
   // Sincroniza convites com as empresas ativas no Supabase Profiles
@@ -353,7 +334,12 @@ export default function AdminPage() {
               </div>
 
               <div className="mt-4 space-y-3">
-                {convites.map((c) => (
+                {convites.length === 0 ? (
+                  <div className="p-8 rounded-2xl border border-dashed border-border/60 text-center text-xs text-muted-foreground">
+                    Nenhum convite emitido ainda. Utilize o formulário ao lado para convidar sua primeira marca.
+                  </div>
+                ) : (
+                  convites.map((c) => (
                   <div
                     key={c.id}
                     className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-border/40 bg-background/30 hover:bg-background/60 transition"
@@ -408,7 +394,7 @@ export default function AdminPage() {
                       </button>
                     </div>
                   </div>
-                ))}
+                )))}
               </div>
             </div>
           </div>

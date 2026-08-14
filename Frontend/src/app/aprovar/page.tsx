@@ -183,11 +183,9 @@ export default function AprovarPage() {
           <div className="rounded-3xl border border-border/60 bg-card p-6 lg:col-span-3 shadow-card">
             <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Resumo da campanha</div>
             <div className="mt-4 space-y-3">
-              <SummaryRow icon={<Calendar size={16} />} label="Data" value={`${holiday.nome} — ${holiday.data}`} />
-              <SummaryRow icon={<Users size={16} />} label="Alcance estimado" value={`${holiday.audience?.toLocaleString("pt-BR")} contatos`} />
-              <SummaryRow icon={<Camera size={16} />} label="Canal 1" value="Instagram — Post + Stories" />
-              <SummaryRow icon={<MessageCircle size={16} />} label="Canal 2" value="WhatsApp — Message personalizada" />
-              <SummaryRow icon={<Tag size={16} />} label="Desconto" value={`${activeVariant.discount} · Cupom ${activeVariant.coupon}`} />
+              <SummaryRow icon={<Calendar size={16} />} label="Data Comemorativa" value={`${holiday.nome} — ${holiday.data}`} />
+              <SummaryRow icon={<Camera size={16} />} label="Canal de Publicação" value="Instagram — Post no Feed" />
+              <SummaryRow icon={<Tag size={16} />} label="Oferta / Cupom" value={`${activeVariant.discount} · Cupom ${activeVariant.coupon}`} />
             </div>
           </div>
 

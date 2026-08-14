@@ -34,7 +34,7 @@ export function TopBar({ children }: AppShellProps) {
   const { user, profile, logout } = useAuth();
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row bg-background">
+    <div className="flex min-h-screen flex-col lg:flex-row bg-background w-full max-w-full overflow-x-hidden">
       {/* SIDEBAR FOR DESKTOP */}
       <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-border/60 bg-card/40 backdrop-blur-xl transition-all duration-300 ease-in-out lg:flex ${isCollapsed ? "w-20 px-3 py-6" : "w-64 p-6"}`}>
         {/* Brand Logo & Collapse Toggle */}

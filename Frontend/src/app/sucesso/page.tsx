@@ -294,7 +294,7 @@ export default function DashboardSucessoPage() {
                   <select
                     value={selectedCampaignId || ""}
                     onChange={(e) => handleSelectCampaign(Number(e.target.value))}
-                    className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-xs font-bold focus:border-primary focus:outline-none shadow-sm cursor-pointer min-w-[280px]"
+                    className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-xs font-bold focus:border-primary focus:outline-none shadow-sm cursor-pointer w-full sm:w-auto sm:min-w-[280px] max-w-full"
                   >
                     {campaignsHistory.length === 0 ? (
                       <option value="">Publicação Mais Recente</option>
