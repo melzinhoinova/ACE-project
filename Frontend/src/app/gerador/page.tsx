@@ -116,6 +116,11 @@ export default function GeradorPage() {
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Drag-and-drop state
+  const [isDraggingOverEmpty, setIsDraggingOverEmpty] = useState(false);
+  const [draggingOverIndex, setDraggingOverIndex] = useState<number | null>(null);
+  const [isDraggingOverAddSlot, setIsDraggingOverAddSlot] = useState(false);
+
   const [holiday] = useState<any>(() => {
     if (typeof window === "undefined") return DEFAULT_HOLIDAY;
     const stored = sessionStorage.getItem("ace.selectedHoliday");
@@ -207,15 +212,14 @@ export default function GeradorPage() {
     });
   };
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // Função auxiliar compartilhada: merge de novos arquivos com os existentes,
+  // leitura como base64 e atualização de estado (respeita limite de 3 imagens)
+  const handleDroppedFiles = (newFiles: File[]) => {
+    const imageFiles = newFiles.filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length === 0) return;
 
-    const newFiles = Array.from(files);
-    // Acumula com os arquivos já existentes, limitando a 3
-    const combined = [...filesToUpload, ...newFiles].slice(0, 3);
-    
-    // Lê todos os arquivos combinados como base64 para preview
+    const combined = [...filesToUpload, ...imageFiles].slice(0, 3);
+
     const readPromises = combined.map((file) =>
       new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -230,7 +234,31 @@ export default function GeradorPage() {
       sessionStorage.setItem("ace.uploadedImages", JSON.stringify(urls));
       sessionStorage.setItem("ace.uploadedImage", urls[0]);
     });
+  };
 
+  // Substitui uma imagem de referência específica pelo índice
+  const handleReplaceAtIndex = (idx: number, file: File) => {
+    if (!file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result);
+      const newFiles = [...filesToUpload];
+      const newUrls = [...uploadedList];
+      newFiles[idx] = file;
+      newUrls[idx] = url;
+      setFilesToUpload(newFiles);
+      setUploadedList(newUrls);
+      sessionStorage.setItem("ace.uploadedImages", JSON.stringify(newUrls));
+      sessionStorage.setItem("ace.uploadedImage", newUrls[0]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    handleDroppedFiles(Array.from(files));
     // Reseta o input para permitir selecionar os mesmos arquivos novamente
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -455,7 +483,37 @@ export default function GeradorPage() {
                   <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-2">
                       {uploadedList.map((url, idx) => (
-                        <div key={idx} className="relative aspect-square overflow-hidden rounded-xl border border-border/60 group">
+                        <div
+                          key={idx}
+                          className={`relative aspect-square overflow-hidden rounded-xl border group transition-all duration-150 ${
+                            draggingOverIndex === idx
+                              ? "border-primary border-2 ring-2 ring-primary/30 bg-primary/5"
+                              : "border-border/60"
+                          }`}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDraggingOverIndex(idx);
+                          }}
+                          onDragLeave={(e) => {
+                            // Só limpa se saiu realmente do elemento (não para filho)
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                              setDraggingOverIndex(null);
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDraggingOverIndex(null);
+                            const file = e.dataTransfer.files[0];
+                            if (file) handleReplaceAtIndex(idx, file);
+                          }}
+                        >
+                          {draggingOverIndex === idx && (
+                            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-primary/10 rounded-xl">
+                              <Upload size={18} className="text-primary" />
+                            </div>
+                          )}
                           <img src={url} alt={`Referência ${idx + 1}`} className="h-full w-full object-cover animate-fade-in" />
                           <button
                             type="button"
@@ -471,20 +529,71 @@ export default function GeradorPage() {
                         <button
                           type="button"
                           onClick={() => fileRef.current?.click()}
-                          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border/60 bg-background/30 hover:border-primary/60 hover:bg-card transition"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsDraggingOverAddSlot(true);
+                          }}
+                          onDragLeave={(e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                              setIsDraggingOverAddSlot(false);
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsDraggingOverAddSlot(false);
+                            handleDroppedFiles(Array.from(e.dataTransfer.files));
+                          }}
+                          className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-dashed transition-all duration-150 ${
+                            isDraggingOverAddSlot
+                              ? "border-primary border-2 bg-primary/5 ring-2 ring-primary/20"
+                              : "border-border/60 bg-background/30 hover:border-primary/60 hover:bg-card"
+                          }`}
                         >
-                          <Upload size={14} className="text-muted-foreground" />
-                          <span className="text-[9px] text-muted-foreground font-semibold">Adicionar</span>
+                          <Upload size={14} className={isDraggingOverAddSlot ? "text-primary" : "text-muted-foreground"} />
+                          <span className={`text-[9px] font-semibold ${
+                            isDraggingOverAddSlot ? "text-primary" : "text-muted-foreground"
+                          }`}>
+                            {isDraggingOverAddSlot ? "Solte aqui" : "Adicionar"}
+                          </span>
                         </button>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => fileRef.current?.click()} className="group flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/60 bg-background/30 px-4 py-5 text-center transition hover:border-primary/60 hover:bg-card">
-                    <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-brand-soft">
-                      <Upload size={14} />
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOverEmpty(true);
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setIsDraggingOverEmpty(false);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOverEmpty(false);
+                      handleDroppedFiles(Array.from(e.dataTransfer.files));
+                    }}
+                    className={`group flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-all duration-150 ${
+                      isDraggingOverEmpty
+                        ? "border-primary bg-primary/5 ring-2 ring-primary/20 scale-[1.01]"
+                        : "border-border/60 bg-background/30 hover:border-primary/60 hover:bg-card"
+                    }`}
+                  >
+                    <div className={`grid h-8 w-8 place-items-center rounded-xl transition-colors ${
+                      isDraggingOverEmpty ? "bg-primary/20" : "bg-gradient-brand-soft"
+                    }`}>
+                      <Upload size={14} className={isDraggingOverEmpty ? "text-primary" : ""} />
                     </div>
-                    <div className="text-xs font-semibold">Envie imagens do produto (máx. 3)</div>
+                    <div className="text-xs font-semibold">
+                      {isDraggingOverEmpty ? "Solte para adicionar" : "Envie imagens do produto (máx. 3)"}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">PNG ou JPG · para guiar a IA mantendo o original</div>
                   </button>
                 )}
