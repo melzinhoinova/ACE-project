@@ -20,6 +20,7 @@ import {
   ImagePlus,
   Paintbrush,
   Palette,
+  Pencil,
   PenTool,
   RefreshCw,
   Sparkles,
@@ -108,6 +109,7 @@ export default function GeradorPage() {
   const [uploadedList, setUploadedList] = useState<string[]>([]);
   const [generated, setGenerated] = useState<string | null>(null);
   const [generatedCopy, setGeneratedCopy] = useState<string | null>(null);
+  const [isEditingCopy, setIsEditingCopy] = useState(false);
   
   const [detalhes, setDetalhes] = useState("");
   const [estilo, setEstilo] = useState("Fotorrealista");
@@ -323,15 +325,57 @@ export default function GeradorPage() {
                   <ArtPreview variant={v} uploaded={uploadedList.length > 0 ? uploadedList[0] : null} generated={generated} />
                 </div>
               )}
-              <div className="mt-5 rounded-2xl border border-border/60 bg-background/40 p-4">
-                <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Legenda</div>
+              <div className="mt-5 rounded-2xl border border-border/60 bg-background/40 p-4 transition-all duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Legenda</div>
+                  {(stage === "ready" || generatedCopy) && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingCopy((prev) => !prev)}
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-semibold text-white shadow-card transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none ${
+                        isEditingCopy
+                          ? "bg-emerald-600 hover:bg-emerald-500"
+                          : "bg-gradient-brand hover:brightness-110"
+                      }`}
+                      title={isEditingCopy ? "Concluir edição" : "Editar legenda"}
+                    >
+                      {isEditingCopy ? (
+                        <>
+                          <Check size={13} className="text-white" />
+                          <span>Concluir</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pencil size={12} className="text-white" />
+                          <span>Editar</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
                 <div className="mt-2 text-base leading-relaxed">
-                  {stage === "idle" ? (
+                  {stage === "idle" && !generatedCopy ? (
                     <span className="italic text-sm text-muted-foreground">Nenhuma legenda gerada ainda. Configure os parâmetros ao lado e clique em Gerar.</span>
                   ) : stage === "loading" ? (
                     <span className="inline-block h-4 w-3/4 rounded bg-secondary shimmer" />
+                  ) : isEditingCopy ? (
+                    <div className="mt-1">
+                      <textarea
+                        value={generatedCopy ?? v.copy}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setGeneratedCopy(val);
+                          sessionStorage.setItem("ace.generatedCopy", val);
+                        }}
+                        placeholder="Escreva ou edite a legenda da sua publicação..."
+                        className="w-full min-h-[110px] rounded-xl border border-primary/50 bg-background/80 p-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition resize-y"
+                        autoFocus
+                      />
+                    </div>
                   ) : (
-                    generatedCopy || v.copy
+                    <p className="whitespace-pre-wrap text-foreground font-normal">
+                      {generatedCopy || v.copy}
+                    </p>
                   )}
                 </div>
               </div>
