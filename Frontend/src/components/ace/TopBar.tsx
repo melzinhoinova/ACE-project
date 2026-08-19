@@ -78,7 +78,7 @@ export function TopBar({ children }: AppShellProps) {
         {/* Bottom Actions & User Profile */}
         <div className="flex flex-col gap-4 mt-auto pt-6 border-t border-border/40">
           {/* Notifications */}
-          <button 
+          {/* <button 
             title={isCollapsed ? "Notificações" : undefined}
             className={`flex items-center gap-3 rounded-2xl py-2.5 text-sm font-semibold text-muted-foreground hover:bg-card/40 hover:text-foreground transition-all ${isCollapsed ? "justify-center px-0" : "px-4"}`}
           >
@@ -92,7 +92,7 @@ export function TopBar({ children }: AppShellProps) {
                 <span className="ml-auto h-2 w-2 rounded-full bg-gradient-brand animate-pulse" />
               </>
             )}
-          </button>
+          </button> */}
 
           {/* User Profile Info */}
           {user ? (

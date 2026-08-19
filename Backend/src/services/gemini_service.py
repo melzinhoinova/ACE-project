@@ -172,3 +172,26 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
     )
 
     return json.loads(response.text)
+
+
+def generate_opportunity_prompt(title: str, description: str | None = None) -> str:
+    """
+    Gera com Gemini uma sugestão curta de prompt de cena visual (em português)
+    para inspirar a criação da imagem publicitária no e-mail de alerta.
+    """
+    try:
+        prompt_str = f"""
+        Você é um diretor de arte publicitário experiente.
+        Escreva uma sugestão curta de prompt de imagem/cenário visual (em português, máximo 2 frases)
+        para criar o anúncio perfeito sobre a oportunidade: '{title}'.
+        {f'Descrição complementar: {description}' if description else ''}
+        Responda APENAS com o texto da sugestão do prompt de imagem, sem aspas e sem saudações.
+        """
+        res = client.models.generate_content(
+            model=TEXT_MODEL,
+            contents=prompt_str,
+        )
+        return res.text.strip().replace('"', '')
+    except Exception as e:
+        print(f"[Gemini] Aviso: Falha ao gerar prompt de imagem: {e}")
+        return f"Cenário publicitário de estúdio elegante em iluminação comercial suave para a campanha de {title}, composição limpa e moderna."

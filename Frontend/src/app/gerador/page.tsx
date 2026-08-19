@@ -615,7 +615,7 @@ export default function GeradorPage() {
             <div className="rounded-3xl border border-border/60 bg-card p-5">
               <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Canais selecionados</div>
               <div className="space-y-3">
-                <ChannelToggle icon={<Camera size={18} />} label="Instagram" detail="Post no feed + Stories" on={igOn} onChange={setIgOn} />
+                <ChannelToggle icon={<Camera size={18} />} label="Instagram" detail="Post no feed " on={igOn} onChange={setIgOn} />
               </div>
             </div>
 
