@@ -194,10 +194,10 @@ export default function DashboardSucessoPage() {
             <LucideRocket className="text-white" size={26} />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl">
-            Painel de resultados <span className="text-gradient-brand">Live Analytics</span>
+            Painel de <span className="text-gradient-brand">resultados</span>
           </h1>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
-            Monitoramento de performance automatizado via Meta v25.0 Graph Engine.
+            Monitoramento de performance
           </p>
         </div>
 
