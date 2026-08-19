@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import { TopBar } from "@/components/ace/TopBar";
 import { fetchCampaigns, CampaignDb } from "@/lib/opportunities-api";
 import { 
+  ArrowLeft,
   ArrowRight, 
   Eye, 
   LucideRocket, 
@@ -188,6 +189,17 @@ export default function DashboardSucessoPage() {
     <TopBar>
       <main className="mx-auto max-w-6xl px-6 py-10 space-y-10">
         
+        {/* Top Navigation */}
+        <div className="flex items-center justify-between">
+          <button 
+            onClick={() => router.push("/radar")} 
+            className="group inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-4 py-2.5 text-xs font-bold text-muted-foreground transition duration-200 hover:border-border hover:bg-card hover:text-foreground shadow-sm active:scale-[0.98]"
+          >
+            <ArrowLeft size={14} className="transition group-hover:-translate-x-0.5" />
+            Voltar ao Radar
+          </button>
+        </div>
+
         {/* Header Principal */}
         <div className="text-center space-y-3">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-brand animate-gradient-shift shadow-card">
@@ -351,15 +363,7 @@ export default function DashboardSucessoPage() {
           )}
         </div>
 
-        {/* Botões de Ação Inferiores */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-4">
-          <button 
-            onClick={() => router.push("/radar")} 
-            className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-brand px-6 py-4 text-sm font-bold text-white shadow-card transition duration-300 hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Voltar ao Radar <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
-          </button>
-        </div>
+
       </main>
       
     </TopBar>
