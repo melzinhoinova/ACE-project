@@ -302,7 +302,7 @@ export default function GeradorPage() {
               {stage === "idle" ? (
                 <span className="inline-flex items-center gap-3">
                   <Wand2 className="text-gradient-brand" />
-                  Configure sua campanha
+                  Configure sua <span className="text-gradient-brand">campanha</span>
                 </span>
               ) : stage === "loading" ? (
                 <span className="inline-flex items-center gap-3">

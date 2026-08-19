@@ -359,48 +359,9 @@ export default function DashboardSucessoPage() {
           >
             Voltar ao Radar <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
           </button>
-          <button 
-            onClick={() => setShare(true)} 
-            className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-6 py-4 text-sm font-bold transition duration-300 hover:bg-card hover:scale-[1.02]"
-          >
-            <Sparkles size={16} className="text-brand" /> Exportar Snapshot de Dados
-          </button>
         </div>
       </main>
-
-      {/* Modal de Compartilhamento */}
-      {share && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm transition-all duration-300">
-          <div className="w-full max-w-md rounded-3xl border border-border/60 bg-card p-6 shadow-card animate-float-up">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-gradient-brand-soft px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-brand">
-                  <Sparkles size={11} /> Compartilhar
-                </div>
-                <h3 className="mt-3 text-xl font-bold">Relatório Executivo</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Disparar snapshots analíticos da campanha.</p>
-              </div>
-              <button 
-                onClick={() => setShare(false)} 
-                className="grid h-9 w-9 place-items-center rounded-full border border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              {["Slack Workspace", "E-mail Executivo", "Copiar Link"].map((c) => (
-                <button 
-                  key={c} 
-                  onClick={() => setShare(false)} 
-                  className="rounded-2xl border border-border/60 bg-background/40 p-4 text-xs font-bold hover:bg-secondary/60 hover:border-brand/40 transition text-center"
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      
     </TopBar>
   );
 }
