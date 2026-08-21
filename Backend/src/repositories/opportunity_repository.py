@@ -38,6 +38,8 @@ class OpportunityRepository:
             title=data.title,
             description=data.description if data.description is not None else "",
             date=data.date,
+            escopo=data.escopo if data.escopo is not None else "nacional",
+            local=data.local,
         )
         db.add(opportunity)
         db.commit()
@@ -50,9 +52,6 @@ class OpportunityRepository:
             return None
 
         update_data = data.model_dump(exclude_unset=True)
-        # remove campos de interface que nao existem no banco
-        update_data.pop("escopo", None)
-        update_data.pop("local", None)
         if "description" in update_data and update_data["description"] is None:
             update_data["description"] = ""
 

@@ -20,7 +20,9 @@ class Opportunity(Base):
     title: Mapped[str]
     description: Mapped[Optional[str]]
     date: Mapped[dt] = mapped_column(Date)
-
+    escopo: Mapped[Optional[str]] = mapped_column(default="nacional")
+    local: Mapped[Optional[str]]
+    
 
 # modelo da tabela de campanhas antigas
 class Campaign(Base):
