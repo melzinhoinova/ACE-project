@@ -102,3 +102,9 @@ class ScoreModel(BaseModel):
 
 class ScoreResponse(BaseModel):
     scores: list[ScoreModel]
+
+class InviteRequest(BaseModel):
+    email: str
+    company_name: str
+    role: Optional[str] = "Brand Manager"
+    invite_url: str
