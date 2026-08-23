@@ -57,22 +57,64 @@ export default function AdminPage() {
     return [];
   });
 
-  // Sincroniza convites com as empresas ativas no Supabase Profiles
+  // Sincroniza convites com as empresas ativas no Supabase Profiles e tabela invitations
   useEffect(() => {
     async function syncWithSupabase() {
       try {
-        const { data: profiles } = await supabase.from("profiles").select("company_name");
-        if (!profiles || profiles.length === 0) return;
-
-        const registeredCompanies = profiles
+        const { data: profiles } = await supabase.from("profiles").select("company_name, email");
+        const registeredCompanies = (profiles || [])
           .map((p) => p.company_name?.toLowerCase().trim())
+          .filter(Boolean);
+        const registeredEmails = (profiles || [])
+          .map((p) => p.email?.toLowerCase().trim())
+          .filter(Boolean);
+
+        // Tenta buscar convites remotos da tabela "invitations" no Supabase
+        const { data: remoteInvites } = await supabase.from("invitations").select("*");
+
+        const acceptedRemoteEmails = (remoteInvites || [])
+          .filter((r: any) => r.status === "Aceito")
+          .map((r: any) => r.email?.toLowerCase().trim())
+          .filter(Boolean);
+
+        const acceptedRemoteCompanies = (remoteInvites || [])
+          .filter((r: any) => r.status === "Aceito")
+          .map((r: any) => (r.company_name || r.companyName)?.toLowerCase().trim())
           .filter(Boolean);
 
         setConvites((prev) => {
           let updated = false;
-          const newList = prev.map((item) => {
-            const isRegistered = registeredCompanies.includes(item.companyName.toLowerCase().trim());
-            if (isRegistered && item.status !== "Aceito") {
+          let currentList = prev;
+
+          // Se houver convites remotos no Supabase, mescla com a lista local
+          if (remoteInvites && remoteInvites.length > 0) {
+            const mappedRemote: Convite[] = remoteInvites.map((r: any) => ({
+              id: r.id || `inv-${r.email}`,
+              email: r.email,
+              companyName: r.company_name || r.companyName,
+              role: r.role || "Brand Manager",
+              createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR"),
+              status: r.status === "Aceito" ? "Aceito" : "Pendente",
+              inviteUrl: r.invite_url || `${typeof window !== "undefined" ? window.location.origin : ""}/login?email=${encodeURIComponent(r.email)}`,
+            }));
+
+            // Adiciona novos que não estavam na lista local
+            const existingIds = new Set(prev.map((c) => c.id));
+            const newFromRemote = mappedRemote.filter((r) => !existingIds.has(r.id));
+            if (newFromRemote.length > 0) {
+              currentList = [...newFromRemote, ...prev];
+              updated = true;
+            }
+          }
+
+          const newList = currentList.map((item) => {
+            const emailKey = item.email.toLowerCase().trim();
+            const companyKey = item.companyName.toLowerCase().trim();
+
+            const isRegisteredByCompany = registeredCompanies.includes(companyKey) || acceptedRemoteCompanies.includes(companyKey);
+            const isRegisteredByEmail = registeredEmails.includes(emailKey) || acceptedRemoteEmails.includes(emailKey);
+            
+            if ((isRegisteredByCompany || isRegisteredByEmail) && item.status !== "Aceito") {
               updated = true;
               return { ...item, status: "Aceito" as const };
             }
@@ -84,8 +126,9 @@ export default function AdminPage() {
           }
           return updated ? newList : prev;
         });
+
       } catch (err) {
-        console.error("Erro ao sincronizar perfis do Supabase:", err);
+        console.error("Erro ao sincronizar perfis/convites do Supabase:", err);
       }
     }
     syncWithSupabase();
@@ -108,7 +151,7 @@ export default function AdminPage() {
 
     try {
       const token = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      const origin = typeof window !== "undefined" ? window.location.origin : "https://studio.ace.ai";
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://ace-project-tan.vercel.app";
       const inviteUrl = `${origin}/login?invite=${token}&email=${encodeURIComponent(email)}&company=${encodeURIComponent(companyName)}`;
 
       const novoConvite: Convite = {
@@ -120,6 +163,37 @@ export default function AdminPage() {
         status: "Pendente",
         inviteUrl,
       };
+
+      // 1. Tenta salvar na tabela 'invitations' do Supabase
+      try {
+        await supabase.from("invitations").upsert({
+          id: novoConvite.id,
+          email: novoConvite.email,
+          company_name: novoConvite.companyName,
+          role: novoConvite.role,
+          status: "Pendente",
+          invite_url: inviteUrl,
+        });
+      } catch (dbErr) {
+        console.warn("Aviso: Não foi possível salvar na tabela 'invitations' do Supabase:", dbErr);
+      }
+
+      // 2. Dispara e-mail de convite via Backend API (FastAPI -> Resend)
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        await fetch(`${apiBase}/api/invite-user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: novoConvite.email,
+            company_name: novoConvite.companyName,
+            role: novoConvite.role,
+            invite_url: inviteUrl,
+          }),
+        });
+      } catch (emailErr) {
+        console.warn("Aviso: Falha ao chamar a API de e-mail do backend:", emailErr);
+      }
 
       const atualizados = [novoConvite, ...convites];
       saveConvites(atualizados);
@@ -136,24 +210,39 @@ export default function AdminPage() {
     }
   };
 
+
   const handleCopyLink = (id: string, url: string) => {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 3000);
   };
 
-  const handleDeleteConvite = (conviteId: string, company: string) => {
+  const handleDeleteConvite = async (conviteId: string, company: string) => {
     if (!confirm(`Deseja realmente revogar/excluir o convite de "${company}"?`)) return;
+
+    // 1. Tenta apagar na tabela 'invitations' do Supabase pelo ID ou pelo email correspondente
+    try {
+      const targetConvite = convites.find((c) => c.id === conviteId);
+      if (targetConvite) {
+        await supabase.from("invitations").delete().or(`id.eq.${conviteId},email.eq.${targetConvite.email}`);
+      } else {
+        await supabase.from("invitations").delete().eq("id", conviteId);
+      }
+    } catch (err) {
+      console.warn("Aviso: Falha ao excluir convite no Supabase:", err);
+    }
+
+    // 2. Atualiza estado local e localStorage
     const atualizados = convites.filter((c) => c.id !== conviteId);
     saveConvites(atualizados);
     if (successInvite?.id === conviteId) setSuccessInvite(null);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingConvite) return;
 
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://studio.ace.ai";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://ace-project-tan.vercel.app";
     const newUrl = `${origin}/login?invite=${editingConvite.id}&email=${encodeURIComponent(editingConvite.email)}&company=${encodeURIComponent(editingConvite.companyName)}`;
 
     const updatedConvite: Convite = {
@@ -161,10 +250,25 @@ export default function AdminPage() {
       inviteUrl: newUrl,
     };
 
+    // Tenta atualizar no Supabase
+    try {
+      await supabase.from("invitations").upsert({
+        id: updatedConvite.id,
+        email: updatedConvite.email,
+        company_name: updatedConvite.companyName,
+        role: updatedConvite.role,
+        status: updatedConvite.status,
+        invite_url: newUrl,
+      });
+    } catch (err) {
+      console.warn("Aviso: Falha ao atualizar convite no Supabase:", err);
+    }
+
     const atualizados = convites.map((c) => (c.id === editingConvite.id ? updatedConvite : c));
     saveConvites(atualizados);
     setEditingConvite(null);
   };
+
 
   return (
     <TopBar>

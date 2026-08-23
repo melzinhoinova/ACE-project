@@ -10,8 +10,10 @@ from src.services.gemini_service import get_score
 
 from src.models.api_models import (
     OpportunityCreate, OpportunityUpdate, OpportunityResponse,
-    CampaignCreate, CampaignDbResponse, ScoreResponse
+    CampaignCreate, CampaignDbResponse, ScoreResponse, InviteRequest
 )
+from src.services.email_service import send_invite_email
+
 
 router: APIRouter = APIRouter()
 
@@ -71,4 +73,17 @@ async def delete_campaign(campaign_id: int, db: Session = Depends(get_db)):
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campanha não encontrada")
     return None
+
+# --- ROTA DE ENVIOS DE CONVITE B2B ---
+
+@router.post("/api/invite-user")
+async def invite_user(data: InviteRequest):
+    result = send_invite_email(
+        recipient_email=data.email,
+        company_name=data.company_name,
+        role=data.role or "Brand Manager",
+        invite_url=data.invite_url,
+    )
+    return {"success": result.get("status") == "success", "result": result}
+
 

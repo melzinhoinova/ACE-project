@@ -29,7 +29,26 @@ function LoginFormContent() {
     if (inviteCompany) setCompanyName(inviteCompany);
   }, [inviteEmail, inviteCompany]);
 
-  const markConviteAsAceito = (targetEmail: string, company?: string) => {
+  const markConviteAsAceito = async (targetEmail: string, company?: string) => {
+    // 1. Tenta atualizar na tabela 'invitations' do Supabase pelo e-mail ou pela empresa (case-insensitive)
+    try {
+      if (targetEmail) {
+        await supabase
+          .from("invitations")
+          .update({ status: "Aceito" })
+          .ilike("email", targetEmail.trim());
+      }
+      if (company) {
+        await supabase
+          .from("invitations")
+          .update({ status: "Aceito" })
+          .ilike("company_name", company.trim());
+      }
+    } catch (err) {
+      console.warn("Aviso: Falha ao atualizar status na tabela 'invitations':", err);
+    }
+
+    // 2. Atualiza no localStorage local
     if (typeof window !== "undefined") {
       try {
         const stored = localStorage.getItem("ace.convites");
@@ -71,16 +90,23 @@ function LoginFormContent() {
           return;
         }
 
-        // 1. Tenta cadastrar o usuário no Supabase Auth
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const emailRedirectTo = origin ? `${origin}/login` : undefined;
+
+        // 1. Tenta cadastrar o usuário no Supabase Auth com emailRedirectTo dinâmico
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
+            emailRedirectTo,
             data: {
               company_name: companyName || "Minha Empresa",
             },
           },
         });
+
+        // Marca como aceito no banco Supabase
+        await markConviteAsAceito(email, companyName);
 
         // 2. Se a conta já existir no Supabase, conecta com a senha definida
         if (signUpError) {
@@ -105,7 +131,7 @@ function LoginFormContent() {
               setLoading(false);
               return;
             } else if (signInData.session) {
-              markConviteAsAceito(email, companyName);
+              await markConviteAsAceito(email, companyName);
               document.cookie = `sb-access-token=${signInData.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
               setSuccessMsg("Conta ativada com sucesso! Redirecionando para o Studio...");
               setTimeout(() => {
@@ -122,13 +148,14 @@ function LoginFormContent() {
 
         // 3. Se a conta foi criada com sessão ativa imediata
         if (signUpData?.session) {
-          markConviteAsAceito(email, companyName);
+          await markConviteAsAceito(email, companyName);
           document.cookie = `sb-access-token=${signUpData.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
           
           if (signUpData.user) {
             try {
               await supabase.from("profiles").upsert({
                 id: signUpData.user.id,
+                email: email.toLowerCase().trim(),
                 company_name: companyName || "Minha Empresa",
               });
             } catch (err) {
@@ -142,6 +169,7 @@ function LoginFormContent() {
           }, 1000);
           return;
         }
+
 
         // 4. Se a conta foi criada mas exige confirmação por e-mail (session == null)
         if (signUpData?.user) {
