@@ -1,0 +1,6 @@
+logging
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+dotenv
+google-genai>=0.1.0
+pydantic>=2.7.4
