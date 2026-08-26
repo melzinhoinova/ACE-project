@@ -22,6 +22,7 @@ class Opportunity(Base):
     date: Mapped[dt] = mapped_column(Date)
     escopo: Mapped[Optional[str]] = mapped_column(default="nacional")
     local: Mapped[Optional[str]]
+    score: Mapped[Optional[str]]
     
 
 # modelo da tabela de campanhas antigas

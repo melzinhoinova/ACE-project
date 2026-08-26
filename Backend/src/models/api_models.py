@@ -9,6 +9,7 @@ class OpportunityCreate(BaseModel):
     date: dt
     escopo: Optional[str] = "nacional"
     local: Optional[str] = None
+    score: Optional[str] = None
 
 # modelo de atualizacao de oportunidade
 class OpportunityUpdate(BaseModel):
@@ -17,6 +18,7 @@ class OpportunityUpdate(BaseModel):
     date: Optional[dt] = None
     escopo: Optional[str] = None
     local: Optional[str] = None
+    score: Optional[str] = None
 
 # modelo de resposta do radar de oportunidades
 class OpportunityResponse(BaseModel):
@@ -26,6 +28,7 @@ class OpportunityResponse(BaseModel):
     date: dt
     escopo: Optional[str] = "nacional"
     local: Optional[str] = None
+    score: Optional[str] = None
 
     model_config = {
         "from_attributes": True
@@ -107,4 +110,4 @@ class InviteRequest(BaseModel):
     email: str
     company_name: str
     role: Optional[str] = "Brand Manager"
-    invite_url: str
+    invite_url: str

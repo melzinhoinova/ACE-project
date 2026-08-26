@@ -26,6 +26,7 @@ class OpportunityResponse(BaseModel):
     date: dt
     escopo: Optional[str] = "nacional"
     local: Optional[str] = None
+    score: Optional[str] = None
 
     model_config = {
         "from_attributes": True
