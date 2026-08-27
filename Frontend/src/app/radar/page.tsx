@@ -191,6 +191,31 @@ const MONTH_NAMES = [
 ];
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+// Trunca títulos longos para o card de destaque principal
+function clampNome(nome: string, max = 45) {
+  if (!nome) return "";
+  const clean = nome.trim();
+  return clean.length > max ? clean.slice(0, max).trimEnd() + "..." : clean;
+}
+
+// Formata o nome no banner de IA preservando o layout mobile
+function formatBannerNome(nome: string, maxTotal = 26) {
+  if (!nome) return "";
+  const clean = nome.replace(/\s+/g, " ").trim();
+
+  if (clean.includes(" ")) {
+    return clean.length > maxTotal ? clean.slice(0, maxTotal).trimEnd() + "..." : clean;
+  }
+
+  if (clean.length > 8) {
+    const p1 = clean.slice(0, 6);
+    const p2 = clean.slice(6, 14).trimEnd() + (clean.length > 14 ? "..." : "");
+    return `${p1} ${p2}`;
+  }
+
+  return clean;
+}
+
 export default function RadarPage() {
   const router = useRouter();
   const { profile } = useAuth();
@@ -415,10 +440,10 @@ export default function RadarPage() {
             </div>
 
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl card-surface px-6 py-5">
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3 text-sm text-muted-foreground">
                 <Sparkles size={16} className="text-gradient-brand" />
                 A IA já está pronta para gerar arte, legendas e segmentação para{" "}
-                <span className="font-semibold text-foreground">{selected.nome}</span>.
+                <span className="font-semibold text-foreground" title={selected.nome}>{formatBannerNome(selected.nome)}</span>.
               </div>
               <button
                 onClick={() => {
@@ -463,6 +488,7 @@ export default function RadarPage() {
                 <input
                   type="text"
                   required
+                  maxLength={60}
                   placeholder="Ex: Liquidação de Primavera, Black Friday..."
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
@@ -566,12 +592,14 @@ function FeaturedCard({
     <div className="relative mt-8">
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-brand opacity-20 blur-3xl" />
       <div className="border-gradient-brand rounded-3xl p-7 sm:p-9 card-surface flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full bg-danger/10 border border-danger/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-danger">
             <Flame size={12} />
             {isHot ? "Oportunidade em alta agora" : "Oportunidade selecionada"}
           </div>
-          <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl">{selected.nome}</h2>
+          <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl break-words" title={selected.nome}>
+            {clampNome(selected.nome, 45)}
+          </h2>
           {selected.description && (
             <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{selected.description}</p>
           )}
@@ -582,8 +610,8 @@ function FeaturedCard({
               {selected.daysAway === 0
                 ? "hoje"
                 : selected.daysAway > 0
-                ? `em ${selected.daysAway} dias`
-                : `há ${Math.abs(selected.daysAway)} dias`}
+                  ? `em ${selected.daysAway} dias`
+                  : `há ${Math.abs(selected.daysAway)} dias`}
             </span>
             <span
               className={`ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${SCOPE_STYLE[selected.escopo]}`}
@@ -752,7 +780,7 @@ function UpcomingList({
                   </span>
                 </div>
               </button>
-              
+
               <div className="flex items-center gap-1">
                 <span className={`text-xs font-bold ${scoreColor(h.score)} mr-1`}>{formatScore(h.score)}</span>
                 <button
