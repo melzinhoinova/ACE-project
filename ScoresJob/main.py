@@ -1,6 +1,4 @@
-from services.get_opportunities import get_opportunities
-from services.get_score import get_score
-from services.update_score import update_scores
+from services.update_score_service import UpdateScoreService
 
 from database.connection import SessionLocal
 
@@ -8,9 +6,8 @@ def main() -> None:
     db = SessionLocal()
 
     try:
-        opportunities = get_opportunities(db=db)
-        scores = get_score(opportunities=opportunities)
-        update_scores(db=db, gemini_response=scores)
+        update_score = UpdateScoreService()
+        update_score.update_scores(db=db)
 
     except:
         db.rollback()
