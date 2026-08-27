@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LucideRocket, Mail, Lock, Loader2, ArrowRight, Building2, UserCheck, ShieldCheck, AlertCircle, MailCheck } from "lucide-react";
+import { LucideRocket, Mail, Lock, Loader2, ArrowRight, Building2, UserCheck, ShieldCheck, AlertCircle, MailCheck, Eye, EyeOff } from "lucide-react";
 
 function LoginFormContent() {
   const router = useRouter();
@@ -18,6 +18,8 @@ function LoginFormContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -336,13 +338,20 @@ function LoginFormContent() {
                       <Lock size={16} />
                     </span>
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-11 pr-4 py-3 rounded-2xl border border-border bg-background/50 focus:bg-background focus:border-primary focus:outline-none transition text-sm font-medium"
+                      className="w-full pl-11 pr-11 py-3 rounded-2xl border border-border bg-background/50 focus:bg-background focus:border-primary focus:outline-none transition text-sm font-medium"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
 
@@ -357,13 +366,20 @@ function LoginFormContent() {
                         <Lock size={16} />
                       </span>
                       <input
-                        type="password"
+                        type={showConfirmPassword ? "text" : "password"}
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full pl-11 pr-4 py-3 rounded-2xl border border-border bg-background/50 focus:bg-background focus:border-primary focus:outline-none transition text-sm font-medium"
+                        className="w-full pl-11 pr-11 py-3 rounded-2xl border border-border bg-background/50 focus:bg-background focus:border-primary focus:outline-none transition text-sm font-medium"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition"
+                      >
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                   </div>
                 )}
