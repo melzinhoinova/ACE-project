@@ -202,12 +202,17 @@ def send_invite_email(
         </div>
 
         <div style="margin-top: 28px; text-align: center;">
-          <a href="{invite_url}" track="off" data-no-track="1" data-msys-link-tracking="0" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #f97316; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #ffffff !important; font-weight: 700; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 14px; text-align: center; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);" class="cta-btn">✨ Ativar Minha Conta</a>
+          <a href="{invite_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #f97316; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #ffffff !important; font-weight: 700; font-size: 15px; text-decoration: none; padding: 16px 32px; border-radius: 14px; text-align: center; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);" class="cta-btn">✨ Ativar Minha Conta</a>
         </div>
 
-        <div style="margin-top: 24px; font-size: 12px; color: #a1a1aa; word-break: break-all; text-align: center; line-height: 1.6;">
-          Ou acesse diretamente pelo link:<br>
-          <a href="{invite_url}" track="off" data-no-track="1" data-msys-link-tracking="0" target="_blank" rel="noopener noreferrer" style="color: #f97316; text-decoration: underline; font-weight: 600;">{invite_url}</a>
+        <!-- Caixa de Link Direto Otimizada para Celular (Sem Bloqueio de Rastreamento) -->
+        <div style="margin-top: 24px; padding: 14px; background-color: #27272a; border: 1px solid #3f3f46; border-radius: 12px; text-align: center;">
+          <div style="font-size: 11px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+            📱 Link Direto (Clique ou Copie no Celular):
+          </div>
+          <div style="font-size: 11px; word-break: break-all; color: #f97316; font-family: monospace; font-weight: 600; line-height: 1.5;">
+            {invite_url}
+          </div>
         </div>
 
         <div class="footer">
@@ -219,34 +224,32 @@ def send_invite_email(
     </html>
     """
 
-    # 1. Tenta Brevo (se BREVO_API_KEY estiver no .env)
+    # 1. Envia via Brevo (Permite envio para qualquer destinatário)
     if os.getenv("BREVO_API_KEY"):
         res_brevo = send_email_via_brevo(recipient_email, subject, html_content)
         if res_brevo.get("status") == "success":
             return res_brevo
-        print("[EmailService] Brevo falhou ou não retornou sucesso, tentando Resend...")
+        print("[EmailService] Brevo falhou ou não retornou sucesso, tentando Resend como contingência...")
 
-    # 2. Fallback para Resend
-    api_key = os.getenv("RESEND_API_KEY")
-    if not api_key:
-        print("[Resend] AVISO: RESEND_API_KEY não configurada em .env. E-mail de convite não enviado.")
-        return {"status": "skipped", "reason": "RESEND_API_KEY ausente"}
+    # 2. Fallback de contingência para Resend
+    resend_key = os.getenv("RESEND_API_KEY")
+    if resend_key:
+        try:
+            resend.api_key = resend_key
+            from_email = os.getenv("RESEND_FROM_EMAIL", "ACE Plataforma <onboarding@resend.dev>")
+            params: resend.Emails.SendParams = {
+                "from": from_email,
+                "to": [recipient_email],
+                "subject": subject,
+                "html": html_content,
+            }
+            response = resend.Emails.send(params)
+            if response.get("id"):
+                print(f"[Resend] E-mail de convite enviado para {recipient_email}! ID: {response.get('id')}")
+                return {"status": "success", "id": response.get("id"), "provider": "resend"}
+        except Exception as e:
+            print(f"[Resend] Falha no fallback Resend: {e}")
 
-    resend.api_key = api_key
-    from_email = os.getenv("RESEND_FROM_EMAIL", "ACE Plataforma <onboarding@resend.dev>")
-    params: resend.Emails.SendParams = {
-        "from": from_email,
-        "to": [recipient_email],
-        "subject": subject,
-        "html": html_content,
-    }
-
-    try:
-        response = resend.Emails.send(params)
-        print(f"[Resend] E-mail de convite enviado com sucesso para {recipient_email}! ID: {response.get('id', 'N/A')}")
-        return {"status": "success", "id": response.get("id")}
-    except Exception as e:
-        print(f"[Resend] Erro ao enviar e-mail de convite via Resend: {e}")
-        return {"status": "error", "message": str(e)}
+    return {"status": "error", "message": "Falha ao enviar e-mail de convite pelo Brevo."}
 
 
