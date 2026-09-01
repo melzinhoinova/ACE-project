@@ -82,3 +82,24 @@ async def invite_user(data: InviteRequest):
     return {"success": result.get("status") == "success", "result": result}
 
 
+# --- ROTAS DE GESTÃO DE USUÁRIOS (ADMIN) ---
+
+from src.services.auth_admin_service import delete_supabase_user, list_active_users
+
+@router.get("/api/admin/users")
+async def get_admin_users(db: Session = Depends(get_db)):
+    """Retorna a lista de usuários ativos cadastrados no Supabase."""
+    try:
+        return list_active_users(db)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.delete("/api/admin/users/{user_id}")
+async def delete_admin_user(user_id: str, db: Session = Depends(get_db)):
+    """Exclui um usuário completamente do auth.users e perfis no Supabase."""
+    try:
+        return delete_supabase_user(user_id, db)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+

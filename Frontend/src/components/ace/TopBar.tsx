@@ -130,12 +130,14 @@ export function TopBar({ children }: AppShellProps) {
                     <span>Configurações do Perfil</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 focus:text-foreground cursor-pointer">
-                  <Link href="/admin" className="flex items-center gap-2 py-2 w-full">
-                    <ShieldCheck size={14} />
-                    <span>Gestão & Convites (Admin)</span>
-                  </Link>
-                </DropdownMenuItem>
+                {profile?.role === "Administrador" && (
+                  <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 focus:text-foreground cursor-pointer">
+                    <Link href="/admin" className="flex items-center gap-2 py-2 w-full">
+                      <ShieldCheck size={14} />
+                      <span>Gestão & Convites (Admin)</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator className="bg-border/40" />
                 <DropdownMenuItem 
                   onClick={logout} 
@@ -194,12 +196,14 @@ export function TopBar({ children }: AppShellProps) {
                       <span>Configurações do Perfil</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 cursor-pointer">
-                    <Link href="/admin" className="flex items-center gap-2 py-2 w-full">
-                      <ShieldCheck size={14} />
-                      <span>Gestão & Convites (Admin)</span>
-                    </Link>
-                  </DropdownMenuItem>
+                  {profile?.role === "Administrador" && (
+                    <DropdownMenuItem asChild className="rounded-xl focus:bg-secondary/60 cursor-pointer">
+                      <Link href="/admin" className="flex items-center gap-2 py-2 w-full">
+                        <ShieldCheck size={14} />
+                        <span>Gestão & Convites (Admin)</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator className="bg-border/40" />
                   <DropdownMenuItem 
                     onClick={logout} 

@@ -11,6 +11,7 @@ type Profile = {
   avatar_url: string | null;
   niche: string | null;
   phone: string | null;
+  role: string | null;
 };
 
 type AuthContextType = {

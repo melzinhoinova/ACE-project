@@ -52,6 +52,6 @@ venv/
 next-env.d.ts
 
 # Openspec
-.agent/
 openspec/
+.agents*
 

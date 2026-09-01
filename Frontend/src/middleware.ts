@@ -18,8 +18,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // 4. Se já tem token e tenta acessar /login, manda para /radar
-  if (token && isLoginPage) {
+  // 4. Se já tem token e tenta acessar /login sem convite, manda para /radar
+  const isInviteFlow = request.nextUrl.searchParams.has('invite')
+  if (token && isLoginPage && !isInviteFlow) {
     return NextResponse.redirect(new URL('/radar', request.url))
   }
 
