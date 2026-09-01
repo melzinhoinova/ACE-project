@@ -31,6 +31,10 @@ def send_email_via_brevo(
         "to": [{"email": to_email}],
         "subject": subject,
         "htmlContent": html_content,
+        "headers": {
+            "X-Mailin-Tag": "transactional",
+            "X-Mailin-Custom": "no-track",
+        },
     }
 
     try:
@@ -198,11 +202,12 @@ def send_invite_email(
         </div>
 
         <div style="margin-top: 28px; text-align: center;">
-          <a href="{invite_url}" class="cta-btn">✨ Ativar Minha Conta</a>
+          <a href="{invite_url}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #f97316; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #ffffff !important; font-weight: 700; font-size: 14px; text-decoration: none; padding: 14px 28px; border-radius: 14px; text-align: center; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);" class="cta-btn">✨ Ativar Minha Conta</a>
         </div>
 
-        <div style="margin-top: 20px; font-size: 11px; color: #71717a; word-break: break-all;">
-          Ou copie o link no navegador: <br>{invite_url}
+        <div style="margin-top: 24px; font-size: 12px; color: #a1a1aa; word-break: break-all; text-align: center; line-height: 1.6;">
+          Ou acesse diretamente pelo link:<br>
+          <a href="{invite_url}" target="_blank" rel="noopener noreferrer" style="color: #f97316; text-decoration: underline; font-weight: 600;">{invite_url}</a>
         </div>
 
         <div class="footer">
