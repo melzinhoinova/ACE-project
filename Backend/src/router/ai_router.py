@@ -2,8 +2,9 @@ import traceback
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Form, HTTPException, UploadFile, File
+from fastapi import APIRouter, Form, HTTPException, UploadFile, File, Depends
 
+from src.dependencies.api_dependency import get_current_user, AuthenticatedUser
 from src.services.gemini_service import generate_campaign_copy, CampanhaInput
 from src.services.openai_service import openai_edit_response
 from src.services.fidelity_service import score_image_fidelity
@@ -26,9 +27,10 @@ async def gerar_campanha(
     detalhes: str | None = Form(default=None),
     estilo: str | None = Form(default=None),
     imagens: list[UploadFile] = File(default=[]),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ):
     try:
-        print(f"\n--- [REQUEST] Gerando campanha para nicho: {nicho} ---")
+        print(f"\n--- [REQUEST] Gerando campanha para nicho: {nicho} (usuário: {current_user.email}) ---")
         print(f"Objetivo: {objetivo}")
         print(f"Estilo: {estilo}")
 

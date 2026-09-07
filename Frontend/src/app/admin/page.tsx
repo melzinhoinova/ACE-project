@@ -84,7 +84,12 @@ export default function AdminPage() {
     setLoadingUsers(true);
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const res = await fetch(`${apiBase}/api/admin/users`);
+      const { getAuthHeaders } = await import("@/lib/opportunities-api");
+      const authHeaders = await getAuthHeaders();
+
+      const res = await fetch(`${apiBase}/api/admin/users`, {
+        headers: authHeaders,
+      });
       if (res.ok) {
         const data = await res.json();
         setActiveUsers(data);
@@ -235,9 +240,12 @@ export default function AdminPage() {
       // 2. Dispara e-mail de convite via Backend API (FastAPI)
       try {
         const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        const { getAuthHeaders } = await import("@/lib/opportunities-api");
+        const authHeaders = await getAuthHeaders();
+
         await fetch(`${apiBase}/api/invite-user`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify({
             email: novoConvite.email,
             company_name: novoConvite.companyName,
@@ -301,8 +309,12 @@ export default function AdminPage() {
 
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const { getAuthHeaders } = await import("@/lib/opportunities-api");
+      const authHeaders = await getAuthHeaders();
+
       const res = await fetch(`${apiBase}/api/admin/users/${targetUser.id}`, {
         method: "DELETE",
+        headers: authHeaders,
       });
 
       if (!res.ok) {
@@ -356,7 +368,20 @@ export default function AdminPage() {
   };
 
   // GUARDA DE ROTA: Bloqueio de Acesso para não-administradores
-  if (!authLoading && profile && profile.role !== "Administrador") {
+  if (authLoading) {
+    return (
+      <TopBar>
+        <main className="mx-auto max-w-xl px-6 py-28 text-center space-y-5 animate-fade-in">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-primary/10 text-primary">
+            <Loader2 size={32} className="animate-spin" />
+          </div>
+          <p className="text-sm text-muted-foreground">Verificando permissões de administrador...</p>
+        </main>
+      </TopBar>
+    );
+  }
+
+  if (!profile || profile.role !== "Administrador") {
     return (
       <TopBar>
         <main className="mx-auto max-w-xl px-6 py-28 text-center space-y-5 animate-fade-in">
@@ -366,7 +391,11 @@ export default function AdminPage() {
           <div className="space-y-2">
             <h1 className="text-2xl font-extrabold tracking-tight">Acesso Restrito a Administradores</h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Você está conectado como <strong className="text-foreground">{profile.company_name || user?.email}</strong> com o papel de <span className="text-primary font-semibold">{profile.role || "Brand Manager"}</span>. Apenas administradores podem gerenciar convites e usuários da plataforma.
+              {profile ? (
+                <>Você está conectado como <strong className="text-foreground">{profile.company_name || user?.email}</strong> com o papel de <span className="text-primary font-semibold">{profile.role || "Brand Manager"}</span>. Apenas administradores podem gerenciar convites e usuários da plataforma.</>
+              ) : (
+                <>Você não possui permissão de administrador para acessar este painel.</>
+              )}
             </p>
           </div>
           <div className="pt-4">

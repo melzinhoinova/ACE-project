@@ -57,9 +57,13 @@ class CampanhaInput:
 
 def generate_campaign_copy(dados: CampanhaInput) -> dict:
     prompt_sistema = f"""
-    Você é um especialista em marketing digital. Gere uma campanha de alta conversão para o Instagram.
+    Você é um especialista em marketing digital de alto padrão. Gere uma campanha de alta conversão para o Instagram.
     A legenda gerada (legenda_instagram) deve ser concisa, direta e cativante, com no máximo 2 a 3 parágrafos pequenos,
     acompanhada de hashtags e gatilhos mentais adequados.
+    DIRETRIZ DE TOM E ESTILO:
+    - Mantenha tom profissional, executivo e autêntico.
+    - É EXPRESSAMENTE PROIBIDO o uso excessivo de emojis (evite emojis como marcadores de tópicos ou após cada frase).
+    - Utilize no máximo 1 ou 2 emojis discretos e bem contextualizados ao longo de toda a legenda, ou nenhum se preferir tom mais sóbrio.
     Propagandas devem sempre mirar em um público com mais de 18 anos devido a venda de bebidas alcóolicas.
     Nicho do cliente: {dados.nicho}
     Objetivo da campanha: {dados.objetivo}

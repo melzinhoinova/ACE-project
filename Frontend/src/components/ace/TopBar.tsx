@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { AceLogo } from "./AceLogo";
 import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings, ShieldCheck } from "lucide-react";
 import { useState } from "react";
-import { ACE_USER } from "@/lib/ace-mock";
 import { useAuth } from "@/app/auth-context";
 import {
   DropdownMenu,

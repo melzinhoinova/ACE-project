@@ -31,7 +31,7 @@ class CampaignRepository:
             description=data.description,
             date=data.date,
             opportunity=data.opportunity,
-            id_PostInstagram=int(data.id_PostInstagram) if data.id_PostInstagram else None,
+            id_PostInstagram=str(data.id_PostInstagram).strip() if data.id_PostInstagram else None,
             original_image_url=data.original_image_url,
             fidelity_score=data.fidelity_score,
             approved=data.approved,

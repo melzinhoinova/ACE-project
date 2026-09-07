@@ -8,36 +8,43 @@ load_dotenv()
 open_meteo = os.getenv("OPEN_METEO_URL") or "https://api.open-meteo.com/v1/forecast"
 geo_encode = os.getenv("GEO_ENCODE_URL") or "https://geocoding-api.open-meteo.com/v1/search"
 
-def get_geo_encode(city: str = "Tupã") -> dict:
-    
+DEFAULT_CITY = os.getenv("DEFAULT_CITY", "São Paulo")
+
+def get_geo_encode(city: str | None = None) -> dict | None:
+    target_city = city or DEFAULT_CITY
     params = {
-        "name": city,
+        "name": target_city,
         "count": 1,
         "language": "pt",
         "countryCode": "BR"
     }
 
-    response = requests.get(geo_encode, params=params, timeout=10)
-    response.raise_for_status()
-    data = response.json()
+    try:
+        response = requests.get(geo_encode, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
 
-    results = data.get("results")
-    if not results:
+        results = data.get("results")
+        if not results:
+            return None
+
+        location = results[0]
+        
+        return {
+            "latitude": location["latitude"],
+            "longitude": location["longitude"]
+        }
+    except Exception:
         return None
 
-    location = results[0]
-    
-    return {
-        "latitude": location["latitude"],
-        "longitude": location["longitude"]
-    }
 
-
-def get_climate_data():
-
-    geo_data: dict = get_geo_encode()
-
-    latitude, longitude = geo_data["latitude"], geo_data["longitude"]
+def get_climate_data(city: str | None = None):
+    geo_data = get_geo_encode(city)
+    if not geo_data:
+        # Coordenadas padrão de fallback (São Paulo: -23.5505, -46.6333)
+        latitude, longitude = -23.5505, -46.6333
+    else:
+        latitude, longitude = geo_data["latitude"], geo_data["longitude"]
 
     params = {
         "latitude": latitude,
@@ -62,25 +69,26 @@ def get_climate_data():
     return data
 
 
-def get_climate_context() -> list:
+def get_climate_context(city: str | None = None) -> list:
+    try:
+        data: dict = get_climate_data(city)
+        current = data.get("current", {})
+        temp = current.get("temperature_2m", 24)
 
-    data: dict = get_climate_data()
+        context_prompt: list = []
 
-    current = data["current"]
-
-    context_prompt: list = []
-
-    if current["temperature_2m"] >= 25:
-        context_prompt.append(
-            "Temperatura moderada à alta indica melhor venda de bebidas que são servidas geladas, considere o frescor de uma bebida trincando"
-            ) 
-
-    elif current["temperature_2m"] < 25:
-        context_prompt.append(
-            "Temperatura moderada à baixa indica melhor venda de bebidas que esquentam, conseidere o calor do alcool"
+        if temp >= 25:
+            context_prompt.append(
+                "Temperatura moderada à alta: favorece campanhas com apelo de frescor, energia, leveza e vivacidade."
+            )
+        else:
+            context_prompt.append(
+                "Temperatura moderada à baixa: favorece campanhas com apelo acolhedor, conforto, sofisticação e intensidade."
             )
 
-    return context_prompt
+        return context_prompt
+    except Exception:
+        return ["Clima estável propício para engajamento e conexão da marca com o público."]
 
 
 def get_climate_forecast() -> dict:

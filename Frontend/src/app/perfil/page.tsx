@@ -180,7 +180,7 @@ export default function ProfilePage() {
                     required
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="Minha Cachaçaria Ltda"
+                    placeholder="Minha Empresa Ltda"
                     className="w-full px-4 py-3 rounded-2xl border border-border bg-background/50 focus:bg-background focus:border-primary focus:outline-none transition-all text-sm font-medium shadow-sm"
                   />
                 </div>
@@ -194,7 +194,7 @@ export default function ProfilePage() {
                     type="text"
                     value={niche}
                     onChange={(e) => setNiche(e.target.value)}
-                    placeholder="Ex: Cachaça Artesanal, Vinhos Finos, Destilados"
+                    placeholder="Ex: Moda, Gastronomia, Varejo, Tecnologia..."
                     className="w-full px-4 py-3 rounded-2xl border border-border bg-background/50 focus:bg-background focus:border-primary focus:outline-none transition-all text-sm font-medium shadow-sm"
                   />
                 </div>

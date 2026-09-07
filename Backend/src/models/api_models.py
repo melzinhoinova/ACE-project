@@ -2,6 +2,16 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import date as dt
 from typing import Optional
 
+MIN_VALID_YEAR = 2024
+MAX_VALID_YEAR = 2035
+
+def validate_date_bounds(v: Optional[dt]) -> Optional[dt]:
+    if v is None:
+        return v
+    if v.year < MIN_VALID_YEAR or v.year > MAX_VALID_YEAR:
+        raise ValueError(f"O ano deve estar entre {MIN_VALID_YEAR} e {MAX_VALID_YEAR}.")
+    return v
+
 # modelo de criacao de oportunidade
 class OpportunityCreate(BaseModel):
     title: str
@@ -11,6 +21,11 @@ class OpportunityCreate(BaseModel):
     local: Optional[str] = None
     score: Optional[str] = None
 
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, v: dt) -> dt:
+        return validate_date_bounds(v)
+
 # modelo de atualizacao de oportunidade
 class OpportunityUpdate(BaseModel):
     title: Optional[str] = None
@@ -19,6 +34,11 @@ class OpportunityUpdate(BaseModel):
     escopo: Optional[str] = None
     local: Optional[str] = None
     score: Optional[str] = None
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, v: Optional[dt]) -> Optional[dt]:
+        return validate_date_bounds(v)
 
 # modelo de resposta do radar de oportunidades
 class OpportunityResponse(BaseModel):
@@ -65,6 +85,11 @@ class CampaignCreate(BaseModel):
     fidelity_score: Optional[float] = None
     approved: bool = False
     generation_attempts: Optional[list] = None
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, v: dt) -> dt:
+        return validate_date_bounds(v)
 
     @field_validator("id_PostInstagram", mode="before")
     @classmethod

@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { TopBar } from "@/components/ace/TopBar";
-import { generateCampaignVariants, DEFAULT_HOLIDAY } from "@/lib/ace-mock";
-import { ArrowLeft, ArrowRight, Calendar, Camera, Loader2, MessageCircle, Shield, Tag, Users, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Camera, Loader2, MessageCircle, Shield, Users, Zap } from "lucide-react";
 
 function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -24,8 +23,7 @@ export default function AprovarPage() {
   const [autonomous, setAutonomous] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  const [holiday, setHoliday] = useState<any>(DEFAULT_HOLIDAY);
-  const [variantIndex, setVariantIndex] = useState<number>(0);
+  const [holiday, setHoliday] = useState<any>({ nome: "Campanha", data: "" });
   const [uploaded, setUploaded] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedCopy, setGeneratedCopy] = useState<string | null>(null);
@@ -38,9 +36,6 @@ export default function AprovarPage() {
     if (storedHoliday) {
       try { setHoliday(JSON.parse(storedHoliday)); } catch { /* ... */ }
     }
-
-    const storedVariant = sessionStorage.getItem("ace.variant");
-    if (storedVariant) setVariantIndex(Number(storedVariant));
 
     const storedImg = sessionStorage.getItem("ace.uploadedImage");
     if (storedImg) setUploaded(storedImg);
@@ -60,64 +55,87 @@ export default function AprovarPage() {
     const storedApproved = sessionStorage.getItem("ace.approved");
     if (storedApproved) setApproved(storedApproved === "true");
   }, []);
-  
-  const activeVariant = useMemo(() => {
-    const generated = generateCampaignVariants(holiday);
-    return generated[variantIndex] || generated[0];
-  }, [holiday, variantIndex]);
 
-  const preHolidayDate = useMemo(() => {
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+
+  useEffect(() => {
     try {
-      const [d, m, y] = holiday.data.split("/").map(Number);
-      const date = new Date(y, m - 1, d);
-      date.setDate(date.getDate() - 2);
-      const dd = String(date.getDate()).padStart(2, "0");
-      const mm = String(date.getMonth() + 1).padStart(2, "0");
-      const yyyy = date.getFullYear();
-      return `${dd}/${mm}/${yyyy}`;
-    } catch { return holiday.data; }
-  }, [holiday.data]);
+      if (holiday?.data) {
+        let dateObj: Date;
+        if (holiday.data.includes("-")) {
+          const [y, m, d] = holiday.data.split("-").map(Number);
+          dateObj = new Date(y, (m || 1) - 1, d || 1);
+        } else {
+          const [d, m, y] = holiday.data.split("/").map(Number);
+          dateObj = new Date(y, (m || 1) - 1, d || 1);
+        }
+        dateObj.setDate(dateObj.getDate() - 2);
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const dd = String(dateObj.getDate()).padStart(2, "0");
+        setScheduleDate(`${yyyy}-${mm}-${dd}`);
+      }
+    } catch {
+      setScheduleDate("2026-04-19");
+    }
+  }, [holiday]);
 
   const activate = async () => {
+    const base64Image = generatedImage || uploaded;
+    if (!base64Image) {
+      alert("Nenhuma imagem gerada foi encontrada. Por favor, volte ao Estúdio de Criação e gere a arte da campanha antes de publicar.");
+      return;
+    }
+    if (!generatedCopy) {
+      alert("Nenhuma legenda foi gerada para esta campanha. Por favor, volte ao Estúdio de Criação e gere a legenda com IA antes de publicar.");
+      return;
+    }
+
+    if (scheduleDate) {
+      const year = parseInt(scheduleDate.split("-")[0], 10);
+      if (isNaN(year) || year < 2024 || year > 2035) {
+        alert("Por favor, selecione uma data de agendamento entre os anos de 2024 e 2035.");
+        return;
+      }
+    }
+
     setLoading(true);
 
-    const caption = generatedCopy || activeVariant?.copy || "Nova campanha gerada!";
-    const base64Image = generatedImage || uploaded;
-    
-    let imageUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1000"; 
+    const caption = generatedCopy;
+    let imageUrl = "";
 
     const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
     try {
-      if (base64Image) {
-        if (base64Image.startsWith("http")) {
-          imageUrl = base64Image;
-          console.log("Imagem já está hospedada no Cloudinary:", imageUrl);
+      const { getAuthHeaders } = await import("@/lib/opportunities-api");
+      const authHeaders = await getAuthHeaders();
+
+      if (base64Image.startsWith("http")) {
+        imageUrl = base64Image;
+        console.log("Imagem já está hospedada no Cloudinary:", imageUrl);
+      } else {
+        console.log("Iniciando upload da imagem via Cloudinary (backend)...");
+
+        const uploadResponse = await fetch(`${API_BASE}/api/upload-imagem`, {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({ image_base64: base64Image }),
+        });
+
+        const uploadData = await uploadResponse.json();
+
+        if (uploadResponse.ok && uploadData.url) {
+          imageUrl = uploadData.url;
+          console.log("Imagem hospedada com sucesso no Cloudinary:", imageUrl);
         } else {
-          console.log("Iniciando upload da imagem via Cloudinary (backend)...");
-
-          const uploadResponse = await fetch(`${API_BASE}/api/upload-imagem`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image_base64: base64Image }),
-          });
-
-          const uploadData = await uploadResponse.json();
-
-          if (uploadResponse.ok && uploadData.url) {
-            imageUrl = uploadData.url;
-            console.log("Imagem hospedada com sucesso no Cloudinary:", imageUrl);
-          } else {
-            throw new Error("Falha ao hospedar a imagem no Cloudinary. " + JSON.stringify(uploadData));
-          }
+          throw new Error("Falha ao hospedar a imagem no Cloudinary. " + JSON.stringify(uploadData));
         }
       }
 
       const response = await fetch(`${API_BASE}/api/instagram/postar`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           imageUrl,
           caption
@@ -136,7 +154,7 @@ export default function AprovarPage() {
             title: holiday.nome ? `Campanha ${holiday.nome}` : "Campanha Instagram",
             campaign: caption,
             description: `Imagem Cloudinary: ${imageUrl}`,
-            date: new Date().toISOString().split("T")[0],
+            date: scheduleDate || new Date().toISOString().split("T")[0],
             opportunity: String(oppId),
             id_PostInstagram: rawPostId || undefined,
             original_image_url: originalImageUrl || undefined,
@@ -151,7 +169,6 @@ export default function AprovarPage() {
 
         router.push("/sucesso");
       } else {
-
         const errData = await response.json().catch(() => null);
         const errMsg = errData?.detail?.detalhes?.error?.message
           || errData?.detail?.detalhes?.message
@@ -161,7 +178,7 @@ export default function AprovarPage() {
         setLoading(false);
       }
     } catch (error: any) {
-      alert(`Erro no processo: ${error.message || "Verifique a conexão com o Python"}`);
+      alert(`Erro no processo: ${error.message || "Verifique a conexão com o backend"}`);
       setLoading(false);
     }
   };
@@ -169,23 +186,37 @@ export default function AprovarPage() {
   return (
     <TopBar>
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs text-muted-foreground">
-          Etapa 3 de 4 · Aprovação
+        <div className="flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs text-muted-foreground">
+            Etapa 3 de 4 · Aprovação
+          </div>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl text-center">
+            Confirme e ative a <span className="text-gradient-brand">Publicação Automática</span>
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground text-center">
+            A IA fará tudo por você, mas você está sempre no controle. Revise o resumo e dispare a campanha.
+          </p>
         </div>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl text-center">
-          Confirme e ative a <span className="text-gradient-brand">Publicação Automática</span>
-        </h1>
-        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          A IA fará tudo por você, mas você está sempre no controle. Revise o resumo e dispare a campanha.
-        </p>
+
+        {((!generatedImage && !uploaded) || !generatedCopy) && (
+          <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-300 flex flex-wrap items-center justify-between gap-3 animate-float-up">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle size={18} className="text-amber-400 flex-shrink-0" />
+              <span><strong>A campanha ainda não foi gerada completamente.</strong> Por favor, gere a imagem e a legenda da campanha no Estúdio de Criação antes de publicar no Instagram.</span>
+            </div>
+            <Link href="/gerador" className="rounded-xl bg-gradient-brand px-4 py-2 text-xs font-bold text-white shadow-card hover:scale-[1.02] transition">
+              Ir para o Estúdio
+            </Link>
+          </div>
+        )}
 
         <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="rounded-3xl border border-border/60 bg-card p-6 lg:col-span-3 shadow-card">
             <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Resumo da campanha</div>
             <div className="mt-4 space-y-3">
-              <SummaryRow icon={<Calendar size={16} />} label="Data Comemorativa" value={`${holiday.nome} — ${holiday.data}`} />
+              <SummaryRow icon={<Calendar size={16} />} label="Data Comemorativa" value={`${holiday.nome || "Oportunidade"} — ${holiday.data || ""}`} />
               <SummaryRow icon={<Camera size={16} />} label="Canal de Publicação" value="Instagram — Post no Feed" />
-              <SummaryRow icon={<Tag size={16} />} label="Oferta / Cupom" value={`${activeVariant.discount} · Cupom ${activeVariant.coupon}`} />
+              <SummaryRow icon={<MessageCircle size={16} />} label="Legenda da Campanha" value={generatedCopy ? "Legenda personalizada com IA" : "Aguardando geração"} />
             </div>
           </div>
 
@@ -212,16 +243,32 @@ export default function AprovarPage() {
                     {autonomous ? "Agendado para" : "Publicar manualmente em"}
                   </div>
                   <div className="mt-2 flex items-center gap-3">
-                    <input type="text" defaultValue={preHolidayDate} className="w-32 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                    <input 
+                      type="date" 
+                      min="2024-01-01"
+                      max="2035-12-31"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      className="rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" 
+                    />
                     <span className="text-muted-foreground">às</span>
-                    <input type="text" defaultValue="09:00" className="w-24 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                    <input 
+                      type="time" 
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="w-24 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" 
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-3">
-              <button onClick={activate} disabled={loading} className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-4 text-sm font-bold text-white shadow-card transition hover:scale-[1.01] disabled:opacity-70">
+              <button 
+                onClick={activate} 
+                disabled={loading || (!generatedImage && !uploaded) || !generatedCopy} 
+                className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-4 text-sm font-bold text-white shadow-card transition hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {loading ? <><Loader2 size={16} className="animate-spin" /> Ativando...</> : <><Zap size={16} /> Publicar Campanha <ArrowRight size={16} className="transition group-hover:translate-x-0.5" /></>}
               </button>
               <Link href="/gerador" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-5 py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground">

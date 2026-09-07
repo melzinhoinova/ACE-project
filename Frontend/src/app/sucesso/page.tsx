@@ -88,9 +88,12 @@ export default function DashboardSucessoPage() {
   const fetchPostMetrics = async (mediaId: string) => {
     setLoadingPost(true);
     try {
+      const { getAuthHeaders } = await import("@/lib/opportunities-api");
+      const authHeaders = await getAuthHeaders();
+
       const res = await fetch(`${API_BASE}/api/instagram/dashboard/post/${mediaId}`, {
         cache: "no-store",
-        headers: { 'Cache-Control': 'no-cache' }
+        headers: { ...authHeaders, 'Cache-Control': 'no-cache' }
       });
       if (res.ok) {
         setDadosPost(await res.json());
@@ -105,9 +108,12 @@ export default function DashboardSucessoPage() {
   const fetchRecentPost = async () => {
     setLoadingPost(true);
     try {
+      const { getAuthHeaders } = await import("@/lib/opportunities-api");
+      const authHeaders = await getAuthHeaders();
+
       const resPost = await fetch(`${API_BASE}/api/instagram/dashboard/post/recente`, {
         cache: "no-store",
-        headers: { 'Cache-Control': 'no-cache' }
+        headers: { ...authHeaders, 'Cache-Control': 'no-cache' }
       });
       if (resPost.ok) setDadosPost(await resPost.json());
     } catch (err) {
@@ -120,10 +126,13 @@ export default function DashboardSucessoPage() {
   useEffect(() => {
     async function carregarDashboard() {
       try {
+        const { getAuthHeaders } = await import("@/lib/opportunities-api");
+        const authHeaders = await getAuthHeaders();
+
         // 1. Carrega dados gerais da conta
         const resGeral = await fetch(`${API_BASE}/api/instagram/dashboard/geral`, {
           cache: "no-store",
-          headers: { 'Cache-Control': 'no-cache' }
+          headers: { ...authHeaders, 'Cache-Control': 'no-cache' }
         });
         if (resGeral.ok) setDadosGeral(await resGeral.json());
 

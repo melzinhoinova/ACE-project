@@ -61,9 +61,9 @@ def send_opportunity_alert(
         return {"status": "skipped", "reason": "NOTIFICATION_DEST_EMAIL ausente"}
 
     is_tomorrow = days_remaining == 1
-    badge_label = "AMANHÃ ÀS 10H!" if is_tomorrow else "EM 1 SEMANA (7 DIAS)"
+    badge_label = "AMANHÃ ÀS 10H" if is_tomorrow else "EM 1 SEMANA (7 DIAS)"
     badge_bg = "#ef4444" if is_tomorrow else "#f59e0b"
-    subject = f"{'🚨 [AMANHÃ!]' if is_tomorrow else '🔥 [7 DIAS]'} Oportunidade ACE: {opportunity_title}"
+    subject = f"{'[AMANHÃ]' if is_tomorrow else '[7 DIAS]'} Oportunidade ACE: {opportunity_title}"
     app_url = os.getenv("FRONTEND_URL", "https://ace-project-tan.vercel.app")
 
     prompt_html = ""
@@ -71,7 +71,7 @@ def send_opportunity_alert(
         prompt_html = f"""
         <div style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(234, 88, 12, 0.05) 100%); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 14px; padding: 16px; margin: 20px 0;">
           <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #f97316; margin-bottom: 6px;">
-            💡 Sugestão de Prompt de Imagem (IA):
+            Sugestão de Prompt de Imagem:
           </div>
           <div style="font-size: 13px; font-style: italic; color: #e4e4e7; line-height: 1.5;">
             "{image_prompt_suggestion}"
@@ -104,7 +104,7 @@ def send_opportunity_alert(
           <span class="badge">{badge_label}</span>
         </div>
         <div class="title">{opportunity_title}</div>
-        <div class="meta">📅 Data da Oportunidade: <strong>{opportunity_date}</strong></div>
+        <div class="meta">Data da Oportunidade: <strong>{opportunity_date}</strong></div>
         
         {f'<div class="desc">{opportunity_description}</div>' if opportunity_description else ''}
 
@@ -115,7 +115,7 @@ def send_opportunity_alert(
         </p>
 
         <div style="margin-top: 28px; text-align: center;">
-          <a href="{app_url}/gerador" class="cta-btn">🚀 Gerar Campanha no ACE Estúdio</a>
+          <a href="{app_url}/gerador" class="cta-btn">Gerar Campanha no ACE Estúdio</a>
         </div>
 
         <div class="footer">
@@ -167,7 +167,7 @@ def send_invite_email(
     Envia um e-mail transacional com o convite de acesso B2B à plataforma ACE.
     Prioriza Brevo se BREVO_API_KEY estiver configurada, com fallback para Resend.
     """
-    subject = f"🔑 Convite de Acesso- ACE Studio "
+    subject = "Convite de Acesso - ACE Studio"
 
     html_content = f"""
     <!DOCTYPE html>
@@ -188,7 +188,7 @@ def send_invite_email(
     <body>
       <div class="container">
         <div style="text-align: left;">
-          <span class="badge">CONVITE EXCLUSIVO </span>
+          <span class="badge">CONVITE EXCLUSIVO</span>
         </div>
         <div class="title">Bem-vindo ao ACE Studio</div>
         <div class="meta">Sua marca <strong>{company_name}</strong> foi convidada com o nível de acesso <strong>{role}</strong>.</div>
@@ -198,7 +198,7 @@ def send_invite_email(
         </div>
 
         <div style="margin-top: 28px; text-align: center;">
-          <a href="{invite_url}" class="cta-btn">✨ Ativar Minha Conta</a>
+          <a href="{invite_url}" class="cta-btn">Ativar Minha Conta</a>
         </div>
 
         <div style="margin-top: 20px; font-size: 11px; color: #71717a; word-break: break-all;">

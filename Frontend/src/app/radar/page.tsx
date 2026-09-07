@@ -40,10 +40,6 @@ type Enriched = {
   local?: string;
   date: Date;
   score: "high" | "medium" | "low";
-  audience: number;
-  ticket: string;
-  coupon: string;
-  channels: string[];
   daysAway: number;
   isCustom?: boolean;
 };
@@ -57,21 +53,6 @@ const SCOPE_STYLE: Record<Escopo, string> = {
   nacional: "bg-card text-foreground border-border",
   estadual: "bg-[oklch(0.70_0.18_240/0.15)] text-[oklch(0.85_0.14_240)] border-[oklch(0.70_0.18_240/0.35)]",
   municipal: "bg-[oklch(0.74_0.18_145/0.15)] text-[oklch(0.85_0.16_145)] border-[oklch(0.74_0.18_145/0.35)]",
-};
-
-const META: Record<string, { score: number; audience: number; ticket: string; coupon: string; channels: string[] }> = {
-  "Dia dos Namorados": { score: 94, audience: 1240, ticket: "R$ 387", coupon: "AMOR20", channels: ["Instagram", "WhatsApp"] },
-  Natal: { score: 96, audience: 2180, ticket: "R$ 512", coupon: "NATAL25", channels: ["Instagram", "WhatsApp"] },
-  "Confraternização Universal": { score: 72, audience: 640, ticket: "R$ 210", coupon: "ANO26", channels: ["Instagram"] },
-  Carnaval: { score: 81, audience: 1480, ticket: "R$ 298", coupon: "FOLIA15", channels: ["Instagram", "WhatsApp"] },
-  Tiradentes: { score: 58, audience: 420, ticket: "R$ 180", coupon: "TIRA10", channels: ["WhatsApp"] },
-  "Dia do Trabalho": { score: 64, audience: 720, ticket: "R$ 240", coupon: "TRAB15", channels: ["Instagram"] },
-  "Independência do Brasil": { score: 71, audience: 880, ticket: "R$ 265", coupon: "BR07", channels: ["Instagram", "WhatsApp"] },
-  "Nossa Senhora Aparecida": { score: 68, audience: 540, ticket: "R$ 220", coupon: "FE12", channels: ["WhatsApp"] },
-  Finados: { score: 35, audience: 180, ticket: "R$ 120", coupon: "", channels: [] },
-  "Proclamação da República": { score: 62, audience: 510, ticket: "R$ 230", coupon: "REP15", channels: ["Instagram"] },
-  "Sexta-feira Santa": { score: 70, audience: 690, ticket: "R$ 250", coupon: "PASCOA20", channels: ["Instagram", "WhatsApp"] },
-  "Corpus Christi": { score: 55, audience: 340, ticket: "R$ 190", coupon: "CC10", channels: ["WhatsApp"] },
 };
 
 const TODAY = new Date();
@@ -107,18 +88,6 @@ function daysBetween(a: Date, b: Date) {
   return Math.round((aa - bb) / ms);
 }
 
-function seedFrom(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-function numericScoreToString(s: number): "high" | "medium" | "low" {
-  if (s >= 80) return "high";
-  if (s >= 60) return "medium";
-  return "low";
-}
-
 function formatScore(s: "high" | "medium" | "low") {
   if (s === "high") return "Alto";
   if (s === "medium") return "Médio";
@@ -137,21 +106,9 @@ function enrichOpportunity(item: Opportunity | Holiday): Enriched {
   const idStr = String(item.id);
   const description = isApi ? item.description || undefined : undefined;
 
-  const meta = META[title];
-  const fallback = (() => {
-    const seed = seedFrom(title + brDateStr);
-    return {
-      score: 55 + (seed % 35),
-      audience: 350 + (seed % 900),
-      ticket: `R$ ${190 + (seed % 250)}`,
-      coupon: `PROMO${(seed % 30) + 5}`,
-      channels: ["Instagram"],
-    };
-  })();
-  const m = meta ?? fallback;
-
   const scoreFromItem = isApi ? (item as Opportunity).score : undefined;
-  const scoreVal = scoreFromItem || numericScoreToString(m.score);
+  const scoreVal: "high" | "medium" | "low" = 
+    scoreFromItem === "high" || scoreFromItem === "low" ? scoreFromItem : "medium";
 
   return {
     id: idStr,
@@ -166,10 +123,6 @@ function enrichOpportunity(item: Opportunity | Holiday): Enriched {
     date: dateObj,
     daysAway: daysBetween(dateObj, TODAY),
     score: scoreVal,
-    audience: m.audience,
-    ticket: m.ticket,
-    coupon: m.coupon,
-    channels: m.channels,
     isCustom: isApi,
   };
 }
@@ -202,18 +155,7 @@ function clampNome(nome: string, max = 45) {
 function formatBannerNome(nome: string, maxTotal = 26) {
   if (!nome) return "";
   const clean = nome.replace(/\s+/g, " ").trim();
-
-  if (clean.includes(" ")) {
-    return clean.length > maxTotal ? clean.slice(0, maxTotal).trimEnd() + "..." : clean;
-  }
-
-  if (clean.length > 8) {
-    const p1 = clean.slice(0, 6);
-    const p2 = clean.slice(6, 14).trimEnd() + (clean.length > 14 ? "..." : "");
-    return `${p1} ${p2}`;
-  }
-
-  return clean;
+  return clean.length > maxTotal ? clean.slice(0, maxTotal).trimEnd() + "..." : clean;
 }
 
 export default function RadarPage() {
@@ -316,6 +258,12 @@ export default function RadarPage() {
     e.preventDefault();
     if (!formTitle || !formDate) return;
 
+    const year = parseInt(formDate.split("-")[0], 10);
+    if (isNaN(year) || year < 2024 || year > 2035) {
+      alert("Por favor, informe uma data válida entre os anos de 2024 e 2035.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       if (editingItem && editingItem.rawId) {
@@ -372,7 +320,7 @@ export default function RadarPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="animate-float-up">
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-              {saudacao} <span className="inline-block">👋</span>
+              {saudacao}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Calendário estratégico de oportunidades e datas comemorativas</p>
           </div>
@@ -498,11 +446,13 @@ export default function RadarPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                  Data *
+                  Data * (2024 - 2035)
                 </label>
                 <input
                   type="date"
                   required
+                  min="2024-01-01"
+                  max="2035-12-31"
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
                   className="w-full rounded-xl border border-border/80 bg-card px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -789,7 +739,7 @@ function UpcomingList({
                     onEdit(h);
                   }}
                   title="Editar"
-                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-primary transition"
+                  className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-muted-foreground hover:text-primary transition"
                 >
                   <Pencil size={13} />
                 </button>
@@ -799,7 +749,7 @@ function UpcomingList({
                     onDelete(h);
                   }}
                   title="Excluir"
-                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-danger transition"
+                  className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-muted-foreground hover:text-danger transition"
                 >
                   <Trash2 size={13} />
                 </button>

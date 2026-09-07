@@ -25,15 +25,9 @@ export default function LandingPage() {
         <div className="flex items-center gap-4">
           <Link 
             href="/login" 
-            className="text-xs font-bold text-muted-foreground hover:text-foreground transition"
-          >
-            Acessar Conta
-          </Link>
-          <Link 
-            href="/cadastro" 
             className="rounded-2xl border border-border/80 bg-card/40 px-6 py-2.5 text-xs font-bold transition hover:bg-card/85"
           >
-            Cadastrar Empresa
+            Acessar Plataforma
           </Link>
         </div>
       </header>
@@ -46,7 +40,7 @@ export default function LandingPage() {
         </div>
 
         <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-foreground sm:text-6xl max-w-3xl animate-float-up" style={{ animationDelay: "80ms" }}>
-          Potencialize as vendas da sua <span className="text-gradient-brand">marca de bebidas</span>.
+          Potencialize as vendas da sua <span className="text-gradient-brand">marca</span>.
         </h1>
         
         <p className="max-w-xl text-base sm:text-lg text-muted-foreground animate-float-up" style={{ animationDelay: "160ms" }}>
@@ -62,10 +56,10 @@ export default function LandingPage() {
             Entrar na Plataforma <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
           </Link>
           <Link
-            href="/cadastro"
+            href="/login"
             className="inline-flex items-center justify-center gap-3 rounded-2xl border border-border bg-card/50 px-8 sm:px-12 py-4 text-sm font-bold backdrop-blur transition duration-300 hover:bg-card/80 hover:scale-[1.02] active:scale-[0.98] text-center"
           >
-            Criar Conta da Empresa
+            Acessar com Convite
           </Link>
         </div>
 
@@ -92,7 +86,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 w-full text-center py-8 border-t border-border/20 text-[11px] uppercase tracking-widest text-muted-foreground/50">
-        ACE v1.0 · Cachaçarias e Destilarias Inteligentes
+        ACE v1.0 · Inteligência e Automação de Campanhas
       </footer>
     </main>
   );

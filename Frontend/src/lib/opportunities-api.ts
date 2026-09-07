@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabaseClient";
+
 export type Escopo = "nacional" | "estadual" | "municipal";
 
 export type Opportunity = {
@@ -28,10 +30,27 @@ export type OpportunityUpdateInput = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+  } catch (err) {
+    console.warn("Aviso ao recuperar token de sessão para API:", err);
+  }
+  return headers;
+}
+
 export async function fetchOpportunities(all: boolean = true): Promise<Opportunity[]> {
   try {
+    const headers = await getAuthHeaders();
     const res = await fetch(`${API_BASE_URL}/api/oportunidades?all=${all}`, {
       cache: "no-store",
+      headers,
     });
     if (!res.ok) {
       throw new Error(`Erro ao buscar oportunidades (${res.status})`);
@@ -51,9 +70,10 @@ export async function fetchOpportunities(all: boolean = true): Promise<Opportuni
 }
 
 export async function createOpportunity(data: OpportunityCreateInput): Promise<Opportunity> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE_URL}/api/oportunidades`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -64,9 +84,10 @@ export async function createOpportunity(data: OpportunityCreateInput): Promise<O
 }
 
 export async function updateOpportunity(id: number, data: OpportunityUpdateInput): Promise<Opportunity> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE_URL}/api/oportunidades/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -77,8 +98,10 @@ export async function updateOpportunity(id: number, data: OpportunityUpdateInput
 }
 
 export async function deleteOpportunity(id: number): Promise<void> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE_URL}/api/oportunidades/${id}`, {
     method: "DELETE",
+    headers,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -116,9 +139,10 @@ export type CampaignDb = {
 };
 
 export async function saveCampaign(data: CampaignInput): Promise<CampaignDb> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE_URL}/api/campanhas`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -132,7 +156,8 @@ export async function fetchCampaigns(opportunity?: string): Promise<CampaignDb[]
   const url = opportunity
     ? `${API_BASE_URL}/api/campanhas?opportunity=${opportunity}`
     : `${API_BASE_URL}/api/campanhas`;
-  const res = await fetch(url, { cache: "no-store" });
+  const headers = await getAuthHeaders();
+  const res = await fetch(url, { cache: "no-store", headers });
   if (!res.ok) {
     throw new Error("Erro ao buscar campanhas do Supabase");
   }

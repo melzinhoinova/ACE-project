@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { TopBar } from "@/components/ace/TopBar";
-import { generateCampaignVariants, DEFAULT_HOLIDAY } from "@/lib/ace-mock";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -13,11 +13,14 @@ import {
 import {
   ArrowRight,
   Box,
+  Calendar,
   Camera,
   Check,
   Cpu,
   Film,
   ImagePlus,
+  Info,
+  Loader2,
   Paintbrush,
   Palette,
   Pencil,
@@ -31,30 +34,49 @@ import {
 } from "lucide-react";
 
 function ArtPreview({ 
-  variant: v, 
+  holiday,
   uploaded, 
-  generated 
+  generated,
+  stage
 }: { 
-  variant: any; 
+  holiday: any;
   uploaded: string | null; 
   generated: string | null; 
+  stage: "idle" | "loading" | "ready";
 }) {
   const imageSrc = (generated?.startsWith("http") ? generated : (generated ? `data:image/png;base64,${generated}` : null)) || uploaded;
   
+  if (stage === "idle" && !imageSrc) {
+    return (
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-dashed border-border/80 bg-card/40 p-6 flex flex-col items-center justify-center text-center shadow-card">
+        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-brand-soft text-brand mb-4 shadow-sm animate-float-up">
+          <Wand2 size={28} className="text-primary" />
+        </div>
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-primary mb-2">
+          {holiday?.nome || "Nova Campanha"}
+        </div>
+        <h4 className="text-base font-bold text-foreground">Aguardando geração com IA</h4>
+        <p className="text-xs text-muted-foreground mt-1 max-w-xs leading-relaxed">
+          Configure as ideias e o estilo estético ao lado e clique em <strong>Gerar Criativo com IA</strong> para criar a arte e a legenda.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-2xl shadow-card" style={{ background: v.art.bg }}>
-      {imageSrc && <img src={imageSrc} alt="Imagem da campanha" className="absolute inset-0 h-full w-full object-cover" />}
+    <div className="relative aspect-square w-full overflow-hidden rounded-2xl shadow-card bg-gradient-brand">
+      {imageSrc ? (
+        <img src={imageSrc} alt="Imagem da campanha" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white bg-card/80 backdrop-blur">
+          <Loader2 className="animate-spin mb-3 text-white" size={32} />
+          <span className="text-sm font-semibold">Gerando arte da campanha...</span>
+        </div>
+      )}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_55%)]" />
       {imageSrc && <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />}
-      <div className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-black/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white backdrop-blur">
-        <Sparkles size={11} /> {v.art.tag}
-      </div>
-      <div className="absolute inset-x-6 bottom-6">
-        {!imageSrc && <div className="text-[64px] leading-none drop-shadow-lg">{v.art.icon}</div>}
-        <div className="mt-3 text-2xl font-extrabold leading-tight text-white drop-shadow-md">{v.headline}</div>
-        <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-zinc-900">
-          {v.discount} · {v.coupon}
-        </div>
+      <div className="absolute left-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white backdrop-blur">
+        <Sparkles size={11} /> {holiday?.nome || "Campanha Oficial"}
       </div>
     </div>
   );
@@ -103,7 +125,6 @@ const ESTILOS_IA = [
 export default function GeradorPage() {
   const router = useRouter();
   const [stage, setStage] = useState<"idle" | "loading" | "ready">("idle");
-  const [variant, setVariant] = useState(0);
   const [regenerating, setRegenerating] = useState(false);
   const [igOn, setIgOn] = useState(true);
   const [uploadedList, setUploadedList] = useState<string[]>([]);
@@ -121,23 +142,22 @@ export default function GeradorPage() {
   const [draggingOverIndex, setDraggingOverIndex] = useState<number | null>(null);
   const [isDraggingOverAddSlot, setIsDraggingOverAddSlot] = useState(false);
 
-  const [holiday] = useState<any>(() => {
-    if (typeof window === "undefined") return DEFAULT_HOLIDAY;
+  const [hasCustomHoliday, setHasCustomHoliday] = useState<boolean>(true);
+  const [holiday, setHoliday] = useState<any>(() => {
+    if (typeof window === "undefined") return { nome: "Campanha Promocional", data: "" };
     const stored = sessionStorage.getItem("ace.selectedHoliday");
     if (stored) { try { return JSON.parse(stored); } catch { /* empty */ } }
-    return DEFAULT_HOLIDAY;
+    return { nome: "Campanha Promocional", data: "" };
   });
-
-  const [variants] = useState<any[]>(() => generateCampaignVariants(holiday));
 
   const fetchCampaign = async (customDetalhes?: string, customEstilo?: string, filesToUse?: File[]) => {
     setStage("loading");
     try {
       const formData = new FormData();
-      formData.append("nicho", holiday.nome);
+      formData.append("nicho", holiday?.nome || "Geral");
       formData.append(
         "objetivo", 
-        `Campanha promocional de ${holiday.nome} com cupom ${holiday.coupon || 'PROMO'} oferecendo desconto especial.`
+        `Campanha promocional com foco em ${holiday?.nome || "data comemorativa"}, destacando os diferenciais do produto e engajamento da marca.`
       );
       
       const activeDetalhes = customDetalhes !== undefined ? customDetalhes : detalhes;
@@ -156,9 +176,15 @@ export default function GeradorPage() {
         });
       }
 
+      const { getAuthHeaders } = await import("@/lib/opportunities-api");
+      const authHeaders = await getAuthHeaders();
+      // Não define Content-Type manual para que o navegador configure o boundary do multipart/form-data
+      delete authHeaders["Content-Type"];
+
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
       const res = await fetch(`${API_BASE}/api/campanha`, {
         method: "POST",
+        headers: authHeaders,
         body: formData,
       });
 
@@ -187,6 +213,9 @@ export default function GeradorPage() {
   };
 
   useEffect(() => {
+    const storedHoliday = sessionStorage.getItem("ace.selectedHoliday");
+    setHasCustomHoliday(Boolean(storedHoliday));
+
     // Remove as imagens de referência anteriores do cache para evitar que fiquem órfãs ao recarregar a página
     sessionStorage.removeItem("ace.uploadedImages");
     sessionStorage.removeItem("ace.uploadedImage");
@@ -207,7 +236,6 @@ export default function GeradorPage() {
   const regen = () => {
     setRegenerating(true);
     fetchCampaign(detalhes, estilo, filesToUpload).finally(() => {
-      setVariant((v) => (v + 1) % variants.length);
       setRegenerating(false);
     });
   };
@@ -284,11 +312,8 @@ export default function GeradorPage() {
   };
 
   const proceed = () => {
-    sessionStorage.setItem("ace.variant", String(variant));
     router.push("/aprovar");
   };
-
-  const v = variants[variant] || variants[0];
 
   return (
     <TopBar>
@@ -302,21 +327,41 @@ export default function GeradorPage() {
               {stage === "idle" ? (
                 <span className="inline-flex items-center gap-3">
                   <Wand2 className="text-gradient-brand" />
-                  Configure sua <span className="text-gradient-brand">campanha</span>
+                  Crie a campanha para <span className="text-gradient-brand">{holiday.nome}</span>
                 </span>
               ) : stage === "loading" ? (
                 <span className="inline-flex items-center gap-3">
                   <Wand2 className="text-gradient-brand animate-pulse" />
-                  IA gerando sua campanha...
+                  IA gerando campanha para <span className="text-gradient-brand">{holiday.nome}</span>...
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-3">
                   <Check className="text-[oklch(0.74_0.18_145)]" />
-                  Campanha pronta!
+                  Campanha pronta para <span className="text-gradient-brand">{holiday.nome}</span>!
                 </span>
               )}
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">{holiday.nome} · {holiday.data}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {stage === "idle"
+                ? `Data base: ${holiday.data}. Configure nicho, objetivo e diretrizes para criar sua campanha.`
+                : stage === "loading"
+                  ? "Analisando contexto de clima, tendências e gerando criativo com legenda..."
+                  : `Conteúdo estratégico gerado para ${holiday.nome} (${holiday.data}).`}
+            </p>
+
+            {!hasCustomHoliday && (
+              <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs text-foreground flex flex-wrap items-center justify-between gap-3 animate-float-up">
+                <div className="flex items-center gap-2">
+                  <Info size={16} className="text-primary flex-shrink-0" />
+                  <span>
+                    <strong>Nenhuma oportunidade selecionada no Radar.</strong> Usando modelo padrão: <strong>{holiday.nome}</strong> ({holiday.data}).
+                  </span>
+                </div>
+                <Link href="/radar" className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-brand px-3 py-1.5 text-xs font-bold text-white shadow-card hover:scale-[1.02] transition">
+                  <Calendar size={14} /> Escolher Data no Radar
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -343,14 +388,14 @@ export default function GeradorPage() {
                         <Wand2 className="text-white" />
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Analisando {holiday.audience?.toLocaleString("pt-BR")} contatos e gerando criativo...
+                        Analisando oportunidade e compondo criativo com IA...
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div key={`${variant}-${uploadedList.length > 0 ? "u" : "n"}`} className={`animate-float-up ${regenerating ? "opacity-50" : ""}`}>
-                  <ArtPreview variant={v} uploaded={uploadedList.length > 0 ? uploadedList[0] : null} generated={generated} />
+                <div key={uploadedList.length > 0 ? "u" : "n"} className={`animate-float-up ${regenerating ? "opacity-50" : ""}`}>
+                  <ArtPreview holiday={holiday} uploaded={uploadedList.length > 0 ? uploadedList[0] : null} generated={generated} stage={stage} />
                 </div>
               )}
               <div className="mt-5 rounded-2xl border border-border/60 bg-background/40 p-4 transition-all duration-200">
@@ -389,7 +434,7 @@ export default function GeradorPage() {
                   ) : isEditingCopy ? (
                     <div className="mt-1">
                       <textarea
-                        value={generatedCopy ?? v.copy}
+                        value={generatedCopy || ""}
                         onChange={(e) => {
                           const val = e.target.value;
                           setGeneratedCopy(val);
@@ -402,7 +447,7 @@ export default function GeradorPage() {
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap text-foreground font-normal">
-                      {generatedCopy || v.copy}
+                      {generatedCopy || "Nenhuma legenda gerada."}
                     </p>
                   )}
                 </div>

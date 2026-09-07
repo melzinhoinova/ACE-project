@@ -3,9 +3,11 @@ import os
 import traceback
 import cloudinary
 import cloudinary.uploader
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from dotenv import load_dotenv
+
+from src.dependencies.api_dependency import get_current_user, AuthenticatedUser
 
 load_dotenv()
 
@@ -22,7 +24,10 @@ class UploadImageRequest(BaseModel):
     image_base64: str  # Pode ser data URL (com prefixo) ou base64 puro
 
 @router.post("/api/upload-imagem")
-def upload_imagem(payload: UploadImageRequest):
+def upload_imagem(
+    payload: UploadImageRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
     """
     Recebe uma imagem em base64 (data URL ou base64 puro),
     faz upload para o Cloudinary e retorna a URL pública permanente.

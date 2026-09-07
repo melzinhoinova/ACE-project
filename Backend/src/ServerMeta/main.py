@@ -1,9 +1,11 @@
 import os
 import time
-from fastapi import HTTPException, APIRouter
+from fastapi import HTTPException, APIRouter, Depends
 from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
+
+from src.dependencies.api_dependency import get_current_user, AuthenticatedUser
 
 load_dotenv()
 
@@ -23,7 +25,10 @@ class PostSchema(BaseModel):
     caption: str
 
 @router.post("/postar")
-def postar_no_instagram(payload: PostSchema):
+def postar_no_instagram(
+    payload: PostSchema,
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
     if not INSTAGRAM_ID or not ACCESS_TOKEN:
         raise HTTPException(
             status_code=500, 
@@ -88,7 +93,7 @@ def postar_no_instagram(payload: PostSchema):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/dashboard/geral")
-def obtener_dashboard_geral():
+def obtener_dashboard_geral(current_user: AuthenticatedUser = Depends(get_current_user)):
     if not INSTAGRAM_ID or not ACCESS_TOKEN:
         raise HTTPException(status_code=500, detail="Configuração da Meta ausente.")
         
@@ -133,7 +138,7 @@ def obtener_dashboard_geral():
             "profileViews": profile_views
         }
     except Exception as e:
-        print(f"💥 Falha crítica no dashboard geral: {str(e)}")
+        print(f"[Dashboard] Falha crítica no dashboard geral: {str(e)}")
         raise HTTPException(status_code=500, detail="Erro ao processar dados gerais.")
 
 
@@ -181,7 +186,7 @@ def _fetch_post_metrics(media_id: str):
     }
 
 @router.get("/dashboard/post/recente")
-def obter_dados_post_recente():
+def obter_dados_post_recente(current_user: AuthenticatedUser = Depends(get_current_user)):
     if not INSTAGRAM_ID or not ACCESS_TOKEN:
         raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
         
@@ -202,7 +207,10 @@ def obter_dados_post_recente():
     return _fetch_post_metrics(media_id)
 
 @router.get("/dashboard/post/{media_id}")
-def obter_dados_post_por_id(media_id: str):
+def obter_dados_post_por_id(
+    media_id: str,
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
     if not INSTAGRAM_ID or not ACCESS_TOKEN:
         raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
     try:

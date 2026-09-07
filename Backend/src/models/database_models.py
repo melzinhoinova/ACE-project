@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import date as dt
 
-from sqlalchemy import Date, BigInteger, Numeric
+from sqlalchemy import Date, BigInteger, Numeric, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -36,7 +36,7 @@ class Campaign(Base):
     description: Mapped[Optional[str]]
     date: Mapped[dt] = mapped_column(Date)
     opportunity: Mapped[str]
-    id_PostInstagram: Mapped[Optional[int]] = mapped_column("id_PostInstagram", BigInteger, unique=True, nullable=True)
+    id_PostInstagram: Mapped[Optional[str]] = mapped_column("id_PostInstagram", String(64), unique=True, nullable=True)
 
     
     original_image_url: Mapped[Optional[str]]
