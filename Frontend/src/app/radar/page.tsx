@@ -204,9 +204,14 @@ export default function RadarPage() {
         setHolidays((data.holidays || []).map((h: Holiday) => enrichOpportunity(h)));
       }
     } catch (e: unknown) {
-      console.error("Erro ao conectar com Supabase:", e);
-      const apiHost = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      setError(`Backend FastAPI indisponível em ${apiHost}. Certifique-se de que o servidor está rodando.`);
+      console.error("Erro ao carregar oportunidades do Radar:", e);
+      const apiHost = getApiBaseUrl();
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("401") || msg.includes("Token") || msg.includes("Sessão")) {
+        setError("Sessão de autenticação expirada ou não encontrada. Por favor, faça login novamente.");
+      } else {
+        setError(`Backend FastAPI em ${apiHost} retornou erro: ${msg || "Servidor indisponível"}.`);
+      }
     } finally {
       setLoading(false);
     }

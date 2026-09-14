@@ -37,8 +37,17 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
   };
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      headers["Authorization"] = `Bearer ${session.access_token}`;
+    let token = session?.access_token;
+
+    if (!token && typeof document !== "undefined") {
+      const match = document.cookie.match(/sb-access-token=([^;]+)/);
+      if (match && match[1]) {
+        token = match[1];
+      }
+    }
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
   } catch (err) {
     console.warn("Aviso ao recuperar token de sessão para API:", err);

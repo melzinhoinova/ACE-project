@@ -10,7 +10,11 @@ from src.database.connection import SessionLocal
 security = HTTPBearer(auto_error=False)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://ebltdbhuasnrkidinhrz.supabase.co").rstrip("/")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+SUPABASE_ANON_KEY = os.getenv(
+    "SUPABASE_ANON_KEY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVibHRkYmh1YXNucmtpZGluaHJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NjI4NjQsImV4cCI6MjEwMDEzODg2NH0.hErNyQ2O_05KrhjKJ2mr2YrwTzV6DJBZFucIOYmdKZg"
+)
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY") or SUPABASE_ANON_KEY
 
 
 def get_db():
@@ -58,11 +62,11 @@ def get_current_user(
 
     # Validação com a GoTrue / Supabase Auth API
     url = f"{SUPABASE_URL}/auth/v1/user"
+    active_key = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
     headers = {
         "Authorization": f"Bearer {token}",
+        "apikey": active_key,
     }
-    if SUPABASE_SERVICE_ROLE_KEY:
-        headers["apikey"] = SUPABASE_SERVICE_ROLE_KEY
 
     try:
         response = requests.get(url, headers=headers, timeout=6)
