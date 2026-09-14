@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from src.dependencies.api_dependency import get_db, get_current_user, AuthenticatedUser
 from src.models.api_models import CampaignScheduleRequest, CampaignDbResponse
+from src.models.database_models import Campaign
 from src.repositories.campaign_repository import CampaignRepository
 
 load_dotenv()
@@ -281,6 +282,99 @@ def obter_dados_post_recente(current_user: AuthenticatedUser = Depends(get_curre
         
     media_id = lista_posts[0].get("id")
     return _fetch_post_metrics(media_id)
+
+@router.get("/dashboard/posts/recentes")
+def obter_posts_recentes(
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """
+    Retorna as publicações mais recentes (padrão: 5) diretamente da conta do Instagram conectada,
+    enriquecidas com os dados das campanhas cadastradas no banco de dados.
+    """
+    if not INSTAGRAM_ID or not ACCESS_TOKEN:
+        raise HTTPException(status_code=500, detail="Configuração ausente no .env.")
+
+    url_lista = f"https://graph.facebook.com/v25.0/{INSTAGRAM_ID}/media"
+    params = {
+        "access_token": ACCESS_TOKEN,
+        "fields": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp",
+        "limit": limit
+    }
+    posts = []
+    try:
+        res_lista = requests.get(url_lista, params=params, timeout=10)
+        if res_lista.status_code == 200:
+            posts = res_lista.json().get("data", [])
+        else:
+            print(f"[Dashboard] Erro da Meta API ao listar posts: {res_lista.status_code} {res_lista.text}")
+    except Exception as e:
+        print(f"[Dashboard] Exceção ao buscar posts recentes da Meta: {e}")
+
+    # Fallback se a Meta não responder: busca as campanhas mais recentes com ID no banco
+    if not posts:
+        db_campaigns = (
+            db.query(Campaign)
+            .filter(Campaign.id_PostInstagram.isnot(None))
+            .order_by(Campaign.id.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": str(c.id_PostInstagram),
+                "title": c.title,
+                "caption": c.campaign,
+                "media_type": "IMAGE",
+                "media_url": c.description if c.description and c.description.startswith("http") else None,
+                "permalink": None,
+                "timestamp": str(c.date),
+                "campaign_id": c.id
+            }
+            for c in db_campaigns
+        ]
+
+    # Mapeia IDs para as campanhas salvas no banco
+    media_ids = [str(p.get("id")) for p in posts if p.get("id")]
+    campanhas_map = {}
+    if media_ids:
+        try:
+            camps = (
+                db.query(Campaign)
+                .filter(Campaign.id_PostInstagram.in_(media_ids))
+                .all()
+            )
+            for c in camps:
+                campanhas_map[str(c.id_PostInstagram)] = c
+        except Exception as err:
+            print(f"[Dashboard] Aviso ao mapear campanhas do banco: {err}")
+
+    resultado = []
+    for p in posts:
+        m_id = str(p.get("id"))
+        camp = campanhas_map.get(m_id)
+        caption = (p.get("caption") or "").strip()
+        if camp and camp.title:
+            titulo = camp.title
+        elif caption:
+            first_line = caption.split("\n")[0].strip()
+            titulo = (first_line[:55] + "...") if len(first_line) > 55 else first_line
+        else:
+            titulo = f"Publicação #{m_id[-5:]}"
+
+        resultado.append({
+            "id": m_id,
+            "title": titulo,
+            "caption": caption,
+            "media_type": p.get("media_type"),
+            "media_url": p.get("media_url") or p.get("thumbnail_url"),
+            "permalink": p.get("permalink"),
+            "timestamp": p.get("timestamp"),
+            "campaign_id": camp.id if camp else None
+        })
+
+    return resultado
 
 @router.get("/dashboard/post/{media_id}")
 def obter_dados_post_por_id(

@@ -177,9 +177,37 @@ export async function saveCampaign(data: CampaignInput): Promise<CampaignDb> {
   return await res.json();
 }
 
-export async function fetchCampaigns(opportunity?: string): Promise<CampaignDb[]> {
-  const url = opportunity
-    ? `${getApiBaseUrl()}/api/campanhas?opportunity=${opportunity}`
+export type RecentPostInstagram = {
+  id: string;
+  title: string;
+  caption?: string;
+  media_type?: string;
+  media_url?: string;
+  permalink?: string;
+  timestamp?: string;
+  campaign_id?: number | null;
+};
+
+export async function fetchRecentInstagramPosts(limit: number = 5): Promise<RecentPostInstagram[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${getApiBaseUrl()}/api/instagram/dashboard/posts/recentes?limit=${limit}`, {
+    cache: "no-store",
+    headers: { ...headers, "Cache-Control": "no-cache" },
+  });
+  if (!res.ok) {
+    throw new Error("Erro ao buscar publicações recentes do Instagram");
+  }
+  return await res.json();
+}
+
+export async function fetchCampaigns(opportunity?: string, limit?: number): Promise<CampaignDb[]> {
+  const params = new URLSearchParams();
+  if (opportunity) params.set("opportunity", opportunity);
+  if (limit) params.set("limit", String(limit));
+  const queryStr = params.toString();
+
+  const url = queryStr
+    ? `${getApiBaseUrl()}/api/campanhas?${queryStr}`
     : `${getApiBaseUrl()}/api/campanhas`;
   const headers = await getAuthHeaders();
   const res = await fetch(url, { cache: "no-store", headers });

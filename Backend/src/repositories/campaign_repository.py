@@ -6,12 +6,11 @@ from src.models.api_models import CampaignCreate, CampaignScheduleRequest
 
 class CampaignRepository:
 
-    def get_all(self, db: Session):
-        return (
-            db.query(Campaign)
-            .order_by(Campaign.date.desc())
-            .all()
-        )
+    def get_all(self, db: Session, limit: Optional[int] = None):
+        q = db.query(Campaign).order_by(Campaign.id.desc())
+        if limit:
+            q = q.limit(limit)
+        return q.all()
 
     def get_by_id(self, db: Session, campaign_id: int) -> Optional[Campaign]:
         return db.query(Campaign).filter(Campaign.id == campaign_id).first()

@@ -7,6 +7,8 @@ import {
   fetchCampaigns, 
   fetchScheduledCampaigns, 
   cancelScheduledCampaign, 
+  fetchRecentInstagramPosts,
+  RecentPostInstagram,
   CampaignDb 
 } from "@/lib/opportunities-api";
 import { getApiBaseUrl } from "@/lib/references-api";
@@ -32,7 +34,8 @@ import {
   Trash2,
   Zap,
   Shield,
-  RotateCcw
+  RotateCcw,
+  ExternalLink
 } from "lucide-react";
 
 function useCounter(target: number, duration = 1200) {
@@ -51,6 +54,23 @@ function useCounter(target: number, duration = 1200) {
     return () => cancelAnimationFrame(raf);
   }, [target, duration]);
   return val;
+}
+
+function formatPostDateTime(isoStr?: string | null): string {
+  if (!isoStr) return "";
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleDateString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return isoStr;
+  }
 }
 
 function formatCampaignOptionDate(dStr: string): string {
@@ -130,9 +150,9 @@ export default function DashboardSucessoPage() {
     }
   }, []);
 
-  // Histórico de campanhas salvas no banco
-  const [campaignsHistory, setCampaignsHistory] = useState<CampaignDb[]>([]);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
+  // Histórico das 5 publicações mais recentes do feed
+  const [recentPosts, setRecentPosts] = useState<RecentPostInstagram[]>([]);
+  const [selectedMediaId, setSelectedMediaId] = useState<string>("");
   const [loadingPost, setLoadingPost] = useState(false);
 
   const API_BASE = getApiBaseUrl();
@@ -213,12 +233,12 @@ export default function DashboardSucessoPage() {
         setLoadingScheduled(true);
 
         // Dispara todas as requisições em paralelo para carregar o dashboard instantaneamente
-        const [resGeralResult, dbCampaignsResult, scheduledResult] = await Promise.allSettled([
+        const [resGeralResult, recentPostsResult, scheduledResult] = await Promise.allSettled([
           fetch(`${API_BASE}/api/instagram/dashboard/geral`, {
             cache: "no-store",
             headers: { ...authHeaders, 'Cache-Control': 'no-cache' }
           }).then(async (res) => (res.ok ? await res.json() : null)),
-          fetchCampaigns().catch(() => []),
+          fetchRecentInstagramPosts(5).catch(() => []),
           fetchScheduledCampaigns().catch(() => []),
         ]);
 
@@ -226,23 +246,18 @@ export default function DashboardSucessoPage() {
           setDadosGeral(resGeralResult.value);
         }
 
-        const dbCampaigns = (dbCampaignsResult.status === "fulfilled" && dbCampaignsResult.value) ? dbCampaignsResult.value : [];
-        setCampaignsHistory(dbCampaigns || []);
+        const posts = (recentPostsResult.status === "fulfilled" && recentPostsResult.value) ? recentPostsResult.value : [];
+        setRecentPosts(posts);
 
         if (scheduledResult.status === "fulfilled" && scheduledResult.value) {
           setScheduledList(scheduledResult.value);
         }
         setLoadingScheduled(false);
 
-        // Seleção Padrão (Auto-seleciona a campanha mais recente gravada)
-        if (dbCampaigns && dbCampaigns.length > 0) {
-          const firstWithMedia = dbCampaigns.find((c) => c.id_PostInstagram) || dbCampaigns[0];
-          setSelectedCampaignId(firstWithMedia.id);
-          if (firstWithMedia.id_PostInstagram) {
-            fetchPostMetrics(String(firstWithMedia.id_PostInstagram));
-          } else {
-            fetchRecentPost();
-          }
+        // Seleção Padrão (Auto-seleciona a publicação mais recente gravada)
+        if (posts && posts.length > 0) {
+          setSelectedMediaId(posts[0].id);
+          fetchPostMetrics(posts[0].id);
         } else {
           fetchRecentPost();
         }
@@ -255,15 +270,18 @@ export default function DashboardSucessoPage() {
     carregarDashboard();
   }, []);
 
-  const handleSelectCampaign = (cId: number) => {
-    setSelectedCampaignId(cId);
-    const camp = campaignsHistory.find((c) => c.id === cId);
-    if (camp && camp.id_PostInstagram) {
-      fetchPostMetrics(String(camp.id_PostInstagram));
+  const handleSelectPost = (mId: string) => {
+    setSelectedMediaId(mId);
+    if (mId) {
+      fetchPostMetrics(mId);
     } else {
       fetchRecentPost();
     }
   };
+
+  const selectedPostObj = useMemo(() => {
+    return recentPosts.find((p) => p.id === selectedMediaId) || recentPosts[0] || null;
+  }, [recentPosts, selectedMediaId]);
 
   const totalFollowers = useCounter(dadosGeral?.followers || 0);
   const totalImpressions = useCounter(dadosGeral?.impressions || 0);
@@ -421,36 +439,89 @@ export default function DashboardSucessoPage() {
             </div>
           ) : abaAtiva === "post" ? (
             <div className="space-y-6 sm:space-y-8">
-              {/* SELETOR DE HISTÓRICO DE CAMPANHAS */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 shadow-card">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-brand-soft">
-                    <History size={20} className="text-foreground" />
+              {/* SELETOR DE HISTÓRICO DAS 5 PUBLICAÇÕES RECENTES */}
+              <div className="flex flex-col gap-4 rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 shadow-card">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-brand-soft">
+                      <History size={20} className="text-foreground" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        Últimas 5 Publicações Recentes
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Selecione uma das 5 publicações mais recentes do seu Instagram para consultar as métricas.
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Histórico de Publicações</div>
-                    <div className="text-xs text-muted-foreground">Selecione uma campanha anterior para consultar seu histórico.</div>
+
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    {loadingPost && <Loader2 size={16} className="animate-spin text-primary shrink-0" />}
+                    <select
+                      value={selectedMediaId || ""}
+                      onChange={(e) => handleSelectPost(e.target.value)}
+                      className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-xs font-bold focus:border-primary focus:outline-none shadow-sm cursor-pointer w-full sm:w-auto sm:min-w-[300px] max-w-full truncate"
+                    >
+                      {recentPosts.length === 0 ? (
+                        <option value="">Publicação Mais Recente</option>
+                      ) : (
+                        recentPosts.map((p, idx) => (
+                          <option key={p.id} value={p.id}>
+                            #{idx + 1} · {p.title} {p.timestamp ? `(${formatPostDateTime(p.timestamp)})` : ""}
+                          </option>
+                        ))
+                      )}
+                    </select>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  {loadingPost && <Loader2 size={16} className="animate-spin text-primary shrink-0" />}
-                  <select
-                    value={selectedCampaignId || ""}
-                    onChange={(e) => handleSelectCampaign(Number(e.target.value))}
-                    className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-xs font-bold focus:border-primary focus:outline-none shadow-sm cursor-pointer w-full sm:w-auto sm:min-w-[280px] max-w-full truncate"
-                  >
-                    {campaignsHistory.length === 0 ? (
-                      <option value="">Publicação Mais Recente</option>
+                {/* Prévia da publicação selecionada */}
+                {selectedPostObj && (
+                  <div className="flex items-center gap-3.5 rounded-2xl border border-border/40 bg-background/40 p-3 animate-fade-in">
+                    {selectedPostObj.media_url ? (
+                      <img
+                        src={selectedPostObj.media_url}
+                        alt={selectedPostObj.title}
+                        className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl object-cover shrink-0 border border-border/60"
+                      />
                     ) : (
-                      campaignsHistory.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.title} — {formatCampaignOptionDate(c.date)}{c.status === "SCHEDULED" ? " ⏳ [Agendado]" : ""}
-                        </option>
-                      ))
+                      <div className="grid h-12 w-12 sm:h-14 sm:w-14 shrink-0 place-items-center rounded-xl bg-secondary/50 text-muted-foreground">
+                        <Sparkles size={18} />
+                      </div>
                     )}
-                  </select>
-                </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs sm:text-sm text-foreground truncate">
+                          {selectedPostObj.title}
+                        </span>
+                        {selectedPostObj.permalink && (
+                          <a
+                            href={selectedPostObj.permalink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline shrink-0"
+                            title="Abrir publicação no Instagram"
+                          >
+                            <span>Abrir</span>
+                            <ExternalLink size={11} />
+                          </a>
+                        )}
+                      </div>
+                      {selectedPostObj.caption && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                          {selectedPostObj.caption}
+                        </p>
+                      )}
+                      {selectedPostObj.timestamp && (
+                        <div className="text-[10px] text-muted-foreground/80 mt-0.5 flex items-center gap-1">
+                          <Clock size={10} />
+                          <span>Publicado em {formatPostDateTime(selectedPostObj.timestamp)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* CARDS DO POST SELECIONADO */}

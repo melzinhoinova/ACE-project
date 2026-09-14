@@ -77,12 +77,13 @@ def delete_opportunity(
 @router.get("/api/campanhas", response_model=list[CampaignDbResponse])
 def get_campaigns(
     opportunity: Optional[str] = None, 
+    limit: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
     if opportunity:
         return campaign_repo.get_by_opportunity(db, opportunity)
-    return campaign_repo.get_all(db)
+    return campaign_repo.get_all(db, limit=limit)
 
 @router.post("/api/campanhas", response_model=CampaignDbResponse, status_code=status.HTTP_201_CREATED)
 def create_campaign(
