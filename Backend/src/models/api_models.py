@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from datetime import date as dt
+from datetime import date as dt, datetime
 from typing import Optional
 
 MIN_VALID_YEAR = 2024
@@ -71,6 +71,7 @@ class CampaignModel(BaseModel):
     original_image_url: Optional[str] = None
     fidelity_score: Optional[float] = None
     approved: bool = False
+    evento: Optional[str] = None
 
 # modelo de criação de campanha no Supabase (usado em POST /api/campanhas)
 class CampaignCreate(BaseModel):
@@ -80,6 +81,11 @@ class CampaignCreate(BaseModel):
     date: dt
     opportunity: str
     id_PostInstagram: Optional[str] = None
+
+    status: Optional[str] = "PUBLISHED"
+    scheduled_at: Optional[datetime] = None
+    publish_mode: Optional[str] = "AUTONOMOUS"
+    error_log: Optional[str] = None
 
     original_image_url: Optional[str] = None
     fidelity_score: Optional[float] = None
@@ -98,6 +104,7 @@ class CampaignCreate(BaseModel):
             return str(v)
         return v
 
+
 # modelo de resposta de campanha vinda do Supabase
 class CampaignDbResponse(BaseModel):
     id: int
@@ -107,6 +114,12 @@ class CampaignDbResponse(BaseModel):
     date: dt
     opportunity: str
     id_PostInstagram: Optional[str] = None
+
+    status: Optional[str] = "PUBLISHED"
+    scheduled_at: Optional[datetime] = None
+    publish_mode: Optional[str] = "AUTONOMOUS"
+    error_log: Optional[str] = None
+
     original_image_url: Optional[str] = None
     fidelity_score: Optional[float] = None
     approved: bool = False
@@ -124,6 +137,18 @@ class CampaignDbResponse(BaseModel):
         return v
 
 
+# modelo de requisição de agendamento de post no Instagram
+class CampaignScheduleRequest(BaseModel):
+    title: Optional[str] = None
+    imageUrl: str
+    caption: str
+    scheduled_at: datetime
+    publish_mode: Optional[str] = "AUTONOMOUS"
+    opportunity: Optional[str] = None
+    original_image_url: Optional[str] = None
+    fidelity_score: Optional[float] = None
+
+
 class ScoreModel(BaseModel):
     opportunity: OpportunityResponse = Field(description="Objeto que representa a oportunidade")
     score: str = Field(description="Score da oportunidade")
@@ -136,3 +161,43 @@ class InviteRequest(BaseModel):
     company_name: str
     role: Optional[str] = "Brand Manager"
     invite_url: str
+
+
+# modelos para a biblioteca de referências de campanhas
+class CampaignReferenceCreate(BaseModel):
+    title: str
+    image_url: str
+    category: Optional[str] = None
+    prompt_recipe: Optional[str] = None
+    is_active: Optional[bool] = True
+
+
+class CampaignReferenceUpdate(BaseModel):
+    title: Optional[str] = None
+    image_url: Optional[str] = None
+    category: Optional[str] = None
+    prompt_recipe: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class CampaignReferenceResponse(BaseModel):
+    id: int
+    title: str
+    image_url: str
+    category: Optional[str] = None
+    prompt_recipe: Optional[str] = None
+    is_active: bool = True
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class CampaignRequest(BaseModel):
+    nicho: str
+    objetivo: str
+    detalhes: Optional[str] = None
+    estilo: Optional[str] = None
+    reference_id: Optional[int] = None
+    texto_promocional: Optional[str] = None
+

@@ -20,6 +20,7 @@ import {
   LogIn
 } from "lucide-react";
 import Link from "next/link";
+import { AceLogo } from "@/components/ace/AceLogo";
 
 function LoginFormContent() {
   const router = useRouter();
@@ -296,17 +297,23 @@ function LoginFormContent() {
   return (
     <div className="w-full max-w-md space-y-8 z-10">
       {/* Logotipo/Header */}
-      <div className="text-center space-y-3">
-        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-gradient-brand animate-gradient-shift shadow-card">
-          <LucideRocket className="text-white" size={22} />
+      <div className="text-center space-y-4">
+        <div className="flex flex-col items-center justify-center gap-3">
+          <div className="relative">
+            <img
+              src="/logo_rocket.png"
+              alt="ACE Logo"
+              className="h-20 w-20 object-contain drop-shadow-[0_8px_24px_rgba(249,115,22,0.45)] animate-float-up"
+            />
+          </div>
+          <h2 className="text-3xl font-black tracking-tight">
+            {isInviteFlow ? (
+              <span>Ativar <span className="text-gradient-brand">Convite ACE</span></span>
+            ) : (
+              <span>Plataforma <span className="text-gradient-brand">ACE</span></span>
+            )}
+          </h2>
         </div>
-        <h2 className="text-3xl font-extrabold tracking-tight">
-          {isInviteFlow ? (
-            <span>Ativar <span className="text-gradient-brand">Convite ACE</span></span>
-          ) : (
-            <span>Entrar no <span className="text-gradient-brand">ACE</span></span>
-          )}
-        </h2>
         <p className="text-sm text-muted-foreground">
           {isInviteFlow 
             ? "Defina sua senha de acesso para aceitar o convite da sua empresa."

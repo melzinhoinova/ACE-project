@@ -30,8 +30,12 @@ import {
   Trash2,
   Upload,
   Wand2,
+  X,
   Zap,
+  Tag,
+  Shuffle,
 } from "lucide-react";
+import { CampaignReference, fetchReferences, getApiBaseUrl } from "@/lib/references-api";
 
 function ArtPreview({ 
   holiday,
@@ -137,6 +141,12 @@ export default function GeradorPage() {
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Referências visuais de estilos
+  const [references, setReferences] = useState<CampaignReference[]>([]);
+  const [selectedReferenceId, setSelectedReferenceId] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("Todos");
+  const [textoPromocional, setTextoPromocional] = useState<string>("");
+
   // Drag-and-drop state
   const [isDraggingOverEmpty, setIsDraggingOverEmpty] = useState(false);
   const [draggingOverIndex, setDraggingOverIndex] = useState<number | null>(null);
@@ -150,15 +160,46 @@ export default function GeradorPage() {
     return { nome: "Campanha Promocional", data: "" };
   });
 
+  const isEveryday = 
+    holiday?.id === "dia-a-dia" ||
+    holiday?.nome?.toLowerCase().includes("dia a dia") || 
+    holiday?.nome?.toLowerCase() === "campanha promocional" || 
+    holiday?.nome?.toLowerCase() === "geral";
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [cancelNotice, setCancelNotice] = useState(false);
+
+  const handleCancelGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  };
+
   const fetchCampaign = async (customDetalhes?: string, customEstilo?: string, filesToUse?: File[]) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setStage("loading");
     try {
       const formData = new FormData();
-      formData.append("nicho", holiday?.nome || "Geral");
+
+      formData.append("nicho", "Cachaça Artesanal");
       formData.append(
         "objetivo", 
-        `Campanha promocional com foco em ${holiday?.nome || "data comemorativa"}, destacando os diferenciais do produto e engajamento da marca.`
+        isEveryday
+          ? "Publicação espontânea de dia a dia e lifestyle para o feed do Instagram, destacando a elegância do produto, o sabor artesanal autêntico da Cachaça Melzinho e momentos de degustação descontraídos."
+          : `Campanha promocional com foco em ${holiday?.nome || "data comemorativa"}, destacando os diferenciais do produto e engajamento da marca.`
       );
+      if (holiday?.nome && holiday.nome.trim() && !isEveryday) {
+        formData.append("evento", holiday.nome.trim());
+      }
+      if (holiday?.descricao && holiday.descricao.trim() && !isEveryday) {
+        formData.append("evento_descricao", holiday.descricao.trim());
+      }
       
       const activeDetalhes = customDetalhes !== undefined ? customDetalhes : detalhes;
       const activeEstilo = customEstilo !== undefined ? customEstilo : estilo;
@@ -169,6 +210,12 @@ export default function GeradorPage() {
       }
       if (activeEstilo) {
         formData.append("estilo", activeEstilo);
+      }
+      if (selectedReferenceId && selectedReferenceId > 0) {
+        formData.append("reference_id", String(selectedReferenceId));
+      }
+      if (textoPromocional && textoPromocional.trim()) {
+        formData.append("texto_promocional", textoPromocional.trim());
       }
       if (activeFiles && activeFiles.length > 0) {
         activeFiles.forEach((file) => {
@@ -181,11 +228,12 @@ export default function GeradorPage() {
       // Não define Content-Type manual para que o navegador configure o boundary do multipart/form-data
       delete authHeaders["Content-Type"];
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const API_BASE = getApiBaseUrl();
       const res = await fetch(`${API_BASE}/api/campanha`, {
         method: "POST",
         headers: authHeaders,
         body: formData,
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -206,15 +254,32 @@ export default function GeradorPage() {
       
       setStage("ready");
     } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.log("Geração abortada com sucesso pelo usuário.");
+        setCancelNotice(true);
+        setTimeout(() => setCancelNotice(false), 5000);
+        setStage(generated ? "ready" : "idle");
+        setRegenerating(false);
+        return;
+      }
       console.error("Erro ao gerar campanha:", err);
       alert(`Erro ao gerar campanha:\n${err.message || "Verifique o terminal do backend."}`);
       setStage("idle");
+    } finally {
+      abortControllerRef.current = null;
     }
   };
 
   useEffect(() => {
     const storedHoliday = sessionStorage.getItem("ace.selectedHoliday");
     setHasCustomHoliday(Boolean(storedHoliday));
+    if (storedHoliday) {
+      try {
+        setHoliday(JSON.parse(storedHoliday));
+      } catch {
+        /* empty */
+      }
+    }
 
     // Remove as imagens de referência anteriores do cache para evitar que fiquem órfãs ao recarregar a página
     sessionStorage.removeItem("ace.uploadedImages");
@@ -231,6 +296,10 @@ export default function GeradorPage() {
     } else {
       setStage("idle");
     }
+
+    fetchReferences(false)
+      .then((data) => setReferences(data))
+      .catch((err) => console.error("Erro ao carregar referências no gerador:", err));
   }, []);
 
   const regen = () => {
@@ -321,35 +390,72 @@ export default function GeradorPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs text-muted-foreground">
-              Etapa 2 de 4 · Estúdio de Criação
+              {isEveryday ? (
+                <>
+                  <Sparkles size={13} className="text-primary" />
+                  <span>Modo Dia a Dia · Foco no Produto & Lifestyle</span>
+                </>
+              ) : (
+                <span>Etapa 2 de 4 · Estúdio de Criação</span>
+              )}
             </div>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
               {stage === "idle" ? (
                 <span className="inline-flex items-center gap-3">
-                  <Wand2 className="text-gradient-brand" />
-                  Crie a campanha para <span className="text-gradient-brand">{holiday.nome}</span>
+                  <Wand2 className="text-primary" />
+                  {isEveryday ? (
+                    <>Crie um post casual para o <span className="text-gradient-brand">Feed do Dia a Dia</span></>
+                  ) : (
+                    <>Crie a campanha para <span className="text-gradient-brand">{holiday.nome}</span></>
+                  )}
                 </span>
               ) : stage === "loading" ? (
                 <span className="inline-flex items-center gap-3">
-                  <Wand2 className="text-gradient-brand animate-pulse" />
-                  IA gerando campanha para <span className="text-gradient-brand">{holiday.nome}</span>...
+                  <Wand2 className="text-primary animate-pulse" />
+                  {isEveryday ? (
+                    <>IA gerando post do dia a dia para <span className="text-gradient-brand">Cachaça Melzinho</span>...</>
+                  ) : (
+                    <>IA gerando campanha para <span className="text-gradient-brand">{holiday.nome}</span>...</>
+                  )}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-3">
                   <Check className="text-[oklch(0.74_0.18_145)]" />
-                  Campanha pronta para <span className="text-gradient-brand">{holiday.nome}</span>!
+                  {isEveryday ? (
+                    <>Post pronto para o <span className="text-gradient-brand">Feed do Dia a Dia</span>!</>
+                  ) : (
+                    <>Campanha pronta para <span className="text-gradient-brand">{holiday.nome}</span>!</>
+                  )}
                 </span>
               )}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {stage === "idle"
-                ? `Data base: ${holiday.data}. Configure nicho, objetivo e diretrizes para criar sua campanha.`
+                ? isEveryday
+                  ? "Modo Dia a Dia: Conteúdo espontâneo e lifestyle para valorizar a Cachaça Melzinho no feed, sem depender de datas do calendário."
+                  : `Data base: ${holiday.data}. Configure nicho, objetivo e diretrizes para criar sua campanha.`
                 : stage === "loading"
-                  ? "Analisando contexto de clima, tendências e gerando criativo com legenda..."
-                  : `Conteúdo estratégico gerado para ${holiday.nome} (${holiday.data}).`}
+                  ? "Analisando estilo de fotografia comercial e gerando criativo com legenda envolvente..."
+                  : isEveryday
+                    ? "Conteúdo espontâneo gerado com sucesso para o feed da marca."
+                    : `Conteúdo estratégico gerado para ${holiday.nome} (${holiday.data}).`}
             </p>
 
-            {!hasCustomHoliday && (
+            {isEveryday && (
+              <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-xs text-foreground flex flex-wrap items-center justify-between gap-3 animate-float-up">
+                <div className="flex items-center gap-2.5">
+                  <Sparkles size={16} className="text-primary flex-shrink-0" />
+                  <span>
+                    <strong>Publicação Espontânea:</strong> Foco total no produto, degustação, lifestyle e happy hour, sem temas ou adereços de datas comemorativas.
+                  </span>
+                </div>
+                <Link href="/radar" className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition">
+                  <Calendar size={13} /> Escolher Data no Calendário
+                </Link>
+              </div>
+            )}
+
+            {!hasCustomHoliday && !isEveryday && (
               <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs text-foreground flex flex-wrap items-center justify-between gap-3 animate-float-up">
                 <div className="flex items-center gap-2">
                   <Info size={16} className="text-primary flex-shrink-0" />
@@ -360,6 +466,13 @@ export default function GeradorPage() {
                 <Link href="/radar" className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-brand px-3 py-1.5 text-xs font-bold text-white shadow-card hover:scale-[1.02] transition">
                   <Calendar size={14} /> Escolher Data no Radar
                 </Link>
+              </div>
+            )}
+
+            {cancelNotice && (
+              <div className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-300 flex items-center gap-2.5 animate-float-up shadow-sm">
+                <Info size={16} className="text-amber-400 shrink-0" />
+                <span>Geração cancelada pelo usuário. Você pode ajustar nicho, fotos ou estilo e gerar novamente quando quiser.</span>
               </div>
             )}
           </div>
@@ -390,6 +503,13 @@ export default function GeradorPage() {
                       <div className="text-sm text-muted-foreground">
                         Analisando oportunidade e compondo criativo com IA...
                       </div>
+                      <button
+                        type="button"
+                        onClick={handleCancelGeneration}
+                        className="mt-2 inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition active:scale-[0.98] shadow-sm cursor-pointer"
+                      >
+                        <X size={14} /> Cancelar Geração
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -466,62 +586,188 @@ export default function GeradorPage() {
                 <textarea
                   value={detalhes}
                   onChange={(e) => setDetalhes(e.target.value)}
-                  placeholder="Ex: Destacar que o produto é 100% orgânico e tem embalagem sustentável..."
+                  placeholder={
+                    isEveryday
+                      ? "Ex: Foco no happy hour com amigos, cachaça servida gelada no copo com limão, ambiente aconchegante de bar..."
+                      : "Ex: Destacar que o produto é 100% orgânico e tem embalagem sustentável..."
+                  }
                   className="w-full min-h-[90px] rounded-2xl border border-border/60 bg-background/30 p-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none transition resize-none focus:ring-1 focus:ring-primary"
                 />
               </div>
 
+              {/* Seletor Visual de Referências de Estilo */}
               <div>
-                <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  <Palette size={14} className="text-primary" /> Estilo Visual da Imagem
+                <div className="mb-2.5 flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    <Palette size={14} className="text-primary" /> Estilo de Referência Visual
+                  </div>
+                  <span className="text-[11px] font-medium text-primary">
+                    {selectedReferenceId ? "Estilo Selecionado" : "Surpreenda-me (Automático)"}
+                  </span>
                 </div>
-                <Select value={estilo} onValueChange={(val) => setEstilo(val)}>
-                  <SelectTrigger className="w-full h-12 rounded-2xl border border-border/60 bg-background/30 px-4 focus:ring-1 focus:ring-primary focus:outline-none flex items-center justify-between text-left">
-                    <div className="flex items-center gap-3">
-                      {(() => {
-                        const selectedEst = ESTILOS_IA.find(e => e.id === estilo);
-                        if (!selectedEst) return <span className="text-sm text-muted-foreground">Selecione um estilo...</span>;
-                        const SelectedIcon = selectedEst.icon;
-                        return (
-                          <>
-                            <div className="grid h-6 w-6 place-items-center rounded-md bg-secondary text-primary">
-                              <SelectedIcon size={12} />
-                            </div>
-                            <span className="text-sm font-semibold text-foreground">{selectedEst.label}</span>
-                          </>
-                        );
-                      })()}
+
+                {/* Filtro de Categorias de Estilo */}
+                {references.length > 0 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 mb-2 scrollbar-none">
+                    {["Todos", ...Array.from(new Set(references.map((r) => r.category).filter(Boolean))) as string[]].map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap transition ${
+                          selectedCategory.toLowerCase() === cat.toLowerCase()
+                            ? "bg-primary text-white shadow-sm"
+                            : "bg-background/40 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Grade de Cards Visuais */}
+                <div className="grid grid-cols-2 gap-2.5 max-h-[260px] overflow-y-auto p-1.5 rounded-2xl border border-border/60 bg-background/20 scrollbar-thin">
+                  {/* Card Surpreenda-me / Automático */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedReferenceId(null)}
+                    className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between min-h-[95px] ${
+                      selectedReferenceId === null
+                        ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
+                        : "border-border/60 bg-card/60 hover:bg-card hover:border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-brand text-white shadow-sm">
+                        <Shuffle size={14} />
+                      </div>
+                      {selectedReferenceId === null && (
+                        <span className="grid h-4 w-4 place-items-center rounded-full bg-primary text-white text-[9px] font-bold">
+                          ✓
+                        </span>
+                      )}
                     </div>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border border-border/60 bg-card/95 backdrop-blur-md shadow-card">
-                    {ESTILOS_IA.map((est) => {
-                      const IconComponent = est.icon;
-                      return (
-                        <SelectItem
-                          key={est.id}
-                          value={est.id}
-                          className="rounded-xl px-3 py-2 cursor-pointer transition focus:bg-secondary/80 hover:bg-secondary/80"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="grid h-7 w-7 place-items-center rounded-lg bg-secondary text-primary">
-                              <IconComponent size={14} />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-semibold">{est.label}</span>
-                              <span className="text-[10px] text-muted-foreground leading-tight">{est.desc}</span>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
+                    <div>
+                      <div className="font-bold text-xs text-foreground">Surpreenda-me</div>
+                      <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">
+                        A IA escolhe o melhor estilo
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Cards de Referências do Supabase */}
+                  {references
+                    .filter((ref) => selectedCategory === "Todos" || ref.category?.toLowerCase() === selectedCategory.toLowerCase())
+                    .map((ref) => {
+                    const isSelected = selectedReferenceId === ref.id;
+                    return (
+                      <button
+                        key={ref.id}
+                        type="button"
+                        onClick={() => setSelectedReferenceId(ref.id)}
+                        className={`p-1.5 rounded-xl border text-left transition relative flex flex-col justify-between overflow-hidden group min-h-[95px] ${
+                          isSelected
+                            ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
+                            : "border-border/60 bg-card/60 hover:bg-card hover:border-border"
+                        }`}
+                      >
+                        <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden mb-1.5 bg-black/40">
+                          <img
+                            src={ref.image_url}
+                            alt={ref.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            loading="lazy"
+                          />
+                          {ref.category && (
+                            <span className="absolute bottom-1 left-1 text-[8px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-white backdrop-blur-sm">
+                              {ref.category}
+                            </span>
+                          )}
+                          {isSelected && (
+                            <span className="absolute top-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-primary text-white text-[9px] font-bold shadow">
+                              ✓
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-bold text-xs text-foreground truncate w-full" title={ref.title}>
+                          {ref.title}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="border-t border-border/40 pt-4">
-                <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  <ImagePlus size={14} className="text-primary" /> Imagens de Referência (Opcional, máx. 3)
+              {/* Selo / Oferta Promocional (Opcional) */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    <Tag size={14} className="text-primary" /> Selo / Oferta Promocional (Opcional)
+                  </div>
+                  {textoPromocional && (
+                    <button
+                      type="button"
+                      onClick={() => setTextoPromocional("")}
+                      className="text-[10px] text-muted-foreground hover:text-red-500 underline"
+                    >
+                      Limpar
+                    </button>
+                  )}
                 </div>
+                <input
+                  type="text"
+                  value={textoPromocional}
+                  onChange={(e) => setTextoPromocional(e.target.value)}
+                  placeholder="Ex: COMPRE 1 LEVE 2, 50% OFF, EDIÇÃO LIMITADA..."
+                  className="w-full px-4 py-2.5 rounded-2xl border border-border/60 bg-background/30 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none transition focus:ring-1 focus:ring-primary font-medium"
+                />
+                {/* Sugestões Rápidas de Selos */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {(() => {
+                    const eventName = (holiday?.nome || "").toLowerCase();
+                    let suggestions = ["COMPRE 1 LEVE 2", "50% OFF", "FRETE GRÁTIS", "EDIÇÃO LIMITADA", "PROMOÇÃO ESPECIAL"];
+                    if (eventName.includes("natal")) {
+                      suggestions = ["PRESENTE DE NATAL", "CEIA COM MELZINHO", "EDIÇÃO DE FIM DE ANO", "KIT NATALINO", "FRETE GRÁTIS"];
+                    } else if (eventName.includes("ano novo") || eventName.includes("réveillon") || eventName.includes("reveillon")) {
+                      suggestions = ["BRINDE DE ANO NOVO", "CELEBRAÇÃO 2025", "EDIÇÃO RÉVEILLON", "KIT DA VIRADA", "COMBO FESTAS"];
+                    } else if (eventName.includes("são joão") || eventName.includes("sao joao") || eventName.includes("junina") || eventName.includes("julina")) {
+                      suggestions = ["ARRAIÁ DO MELZINHO", "QUENTÃO ESPECIAL", "FESTA JUNINA", "DOSE DUPLA JUNINA", "FRETE GRÁTIS"];
+                    } else if (eventName.includes("carnaval")) {
+                      suggestions = ["FOLIA COM MELZINHO", "KIT CARNAVAL", "DOSE DE ENERGIA", "COMBO BLOQUINHO", "50% OFF"];
+                    } else if (eventName.includes("pais")) {
+                      suggestions = ["PRESENTE DO PAIZÃO", "KIT DIA DOS PAIS", "DEGUSTAÇÃO PREMIUM", "EDIÇÃO ESPECIAL PAIS"];
+                    } else if (eventName.includes("mães") || eventName.includes("maes")) {
+                      suggestions = ["PRESENTE DIA DAS MÃES", "KIT ESPECIAL", "MOMENTO BRINDE", "FRETE GRÁTIS"];
+                    } else if (eventName.includes("namorados")) {
+                      suggestions = ["BRINDE A DOIS", "KIT NAMORADOS", "NOITE ROMÂNTICA", "PRESENTE PERFEITO"];
+                    }
+                    return suggestions.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => setTextoPromocional(chip)}
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border transition ${
+                          textoPromocional === chip
+                            ? "bg-primary text-white border-primary shadow-sm"
+                            : "border-border/60 bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card"
+                        }`}
+                      >
+                        {chip}
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              {/* Upload de Fotos do Produto (com aviso do Master Fallback) */}
+              <div className="border-t border-border/40 pt-4">
+                <div className="mb-1 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  <ImagePlus size={14} className="text-primary" /> Fotos do Produto (Opcional, máx. 3)
+                </div>
+                <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                  Envie sua foto ou deixe vazio para usar automaticamente a garrafa oficial do <strong className="text-foreground">Melzinho</strong> com 100% de fidelidade ao rótulo.
+                </p>
                 <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFileChange} className="hidden" />
                 
                 {uploadedList.length > 0 ? (
@@ -644,16 +890,31 @@ export default function GeradorPage() {
                 )}
               </div>
 
-              <div className="border-t border-border/40 pt-4">
+              <div className="border-t border-border/40 pt-4 space-y-2.5">
                 <button
                   type="button"
                   onClick={regen}
                   disabled={stage === "loading" || regenerating}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand py-3.5 text-sm font-semibold text-white transition hover:scale-[1.01] disabled:opacity-50 shadow-card"
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand py-3.5 text-sm font-semibold text-white transition hover:scale-[1.01] disabled:opacity-75 shadow-card"
                 >
                   <Wand2 size={15} className={(stage === "loading" || regenerating) ? "animate-spin" : ""} />
-                  {generated ? "Atualizar Criativo com IA" : "Gerar Criativo com IA"}
+                  {stage === "loading" || regenerating
+                    ? "Gerando com IA..."
+                    : generated
+                      ? "Atualizar Criativo com IA"
+                      : "Gerar Criativo com IA"}
                 </button>
+
+                {(stage === "loading" || regenerating) && (
+                  <button
+                    type="button"
+                    onClick={handleCancelGeneration}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl border border-red-500/40 bg-red-500/10 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition active:scale-[0.99] cursor-pointer"
+                  >
+                    <X size={14} />
+                    Cancelar Geração
+                  </button>
+                )}
               </div>
             </div>
 

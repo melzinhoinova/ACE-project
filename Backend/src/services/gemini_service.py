@@ -3,6 +3,8 @@ import json
 import os
 from dataclasses import dataclass, field
 
+import time
+from fastapi import HTTPException
 from dotenv import load_dotenv
 from PIL import Image
 from google import genai
@@ -53,6 +55,11 @@ class CampanhaInput:
     detalhes: str | None = None
     estilo: str | None = None
     images_list: list[bytes] = field(default_factory=list)
+    reference_title: str | None = None
+    reference_recipe: str | None = None
+    texto_promocional: str | None = None
+    evento: str | None = None
+    evento_descricao: str | None = None
 
 
 def generate_campaign_copy(dados: CampanhaInput) -> dict:
@@ -75,6 +82,47 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
     if dados.estilo:
         prompt_sistema += f"\nEstilo estético visual desejado: {dados.estilo}"
 
+    tem_evento = bool(dados.evento and dados.evento.strip() and dados.evento.lower() not in ("geral", "campanha promocional"))
+
+    if tem_evento:
+        desc_evento = f" ({dados.evento_descricao})" if dados.evento_descricao else ""
+        prompt_sistema += f"""
+    ★ EVENTO / DATA COMEMORATIVA CENTRAL: '{dados.evento}'{desc_evento}
+    Esta campanha celebra especificamente o evento '{dados.evento}'.
+    A legenda_instagram DEVE conectar o sabor premium e a tradição do Melzinho com a celebração e espírito festivo de '{dados.evento}'.
+    """
+
+    if dados.reference_recipe:
+        if tem_evento:
+            prompt_sistema += f"""
+    ★ DIRETRIZ DE FUSÃO TEMÁTICA OBRIGATÓRIA (THEME FUSION PROTOCOL):
+    - Estilo de referência visual: {dados.reference_title or ''}
+    - Receita técnica da referência: {dados.reference_recipe}
+    - Evento comemorativo da campanha: {dados.evento}
+
+    REGRA DE OURO PARA O CAMPO 'sugestao_prompt_imagem':
+    Você DEVE fundir e harmonizar o evento '{dados.evento}' com o estilo de referência '{dados.reference_title or 'comercial'}':
+    1. O estilo de referência determina a técnica fotográfica, enquadramento de produto hero, reflexos nobres e iluminação de estúdio comercial.
+    2. A atmosfera, adereços e elementos decorativos de bom gosto do evento '{dados.evento}' DEVEM OBRIGATORIAMENTE ESTAR VISÍVEIS NA CENA:
+       - Se for Natal: inclua iluminação natalina com luzes de fada (fairy lights) em bokeh dourado quente, pinhas, canela em pau, fita comemorativa discreta, clima acolhedor de ceia de fim de ano.
+       - Se for Ano Novo / Réveillon: taças de brinde, luzes cintilantes brancas e douradas, clima elegante de virada.
+       - Se for São João / Festa Junina: fogueira acolhedora ao fundo, caneca de quentão, bandeirinhas festivas rústicas.
+       - Se for Dia dos Pais: clima nobre de degustação especial, couro, madeira escura e brinde em família.
+       - Se for Carnaval: energia vibrante, confetes sutis e clima de celebração tropical.
+    3. A garrafa oficial do 'Melzinho' permanece como o produto hero absoluto, central e com iluminação publicitária brilhante.
+    NUNCA ignore o evento '{dados.evento}'. O anúncio DEVE ser inconfundivelmente comemorativo de '{dados.evento}'!
+    """
+        else:
+            prompt_sistema += f"\nDIRETRIZ DE REFERÊNCIA VISUAL / ESTILO PUBLICITÁRIO:\nEstilo: {dados.reference_title or ''}\nReceita visual: {dados.reference_recipe}\nAo compor o campo 'sugestao_prompt_imagem', incorpore rigorosamente os elementos de composição, paleta, iluminação e atmosfera dessa referência."
+    elif tem_evento:
+        prompt_sistema += f"""
+    ★ DIRETRIZ VISUAL DE EVENTO SAZONAL:
+    Crie uma composição publicitária comercial deslumbrante e inconfundivelmente comemorativa para o evento '{dados.evento}', com garrafa hero de Melzinho em primeiro plano, adereços elegantes da data e iluminação festiva de alto padrão.
+    """
+
+    if dados.texto_promocional:
+        prompt_sistema += f"\nOFERTA / SELO PROMOCIONAL DA CAMPANHA: '{dados.texto_promocional}'. Destaque essa oferta imperdível na legenda e no apelo do anúncio."
+
     conteudo_gemini: list = []
 
     if dados.images_list:
@@ -82,17 +130,15 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
             conteudo_gemini.append(Image.open(io.BytesIO(img_bytes)))
 
         prompt_sistema += """
-        Observe o produto nas fotos apenas para entender o nicho/contexto visual.
-        No campo 'sugestao_prompt_imagem', descreva em INGLÊS apenas o CENÁRIO publicitário
-        (iluminação, ambiente, composição, ângulo, superfícies, atmosfera) onde o produto ficará em destaque.
-        NÃO descreva a aparência física do produto (cor, formato, rótulo, logotipo) — isso será preservado
-        automaticamente a partir da foto original em uma etapa posterior de edição de imagem.
+        No campo 'sugestao_prompt_imagem', crie uma descrição em INGLÊS para uma composição publicitária comercial de alto impacto (commercial social media advertising flyer poster) para o Instagram.
+        Descreva o ambiente cênico profissional (iluminação de estúdio comercial, reflexos quentes, composição moderna, superfícies de destaque e elementos cênicos do estilo).
+        O produto central em destaque é a garrafa da cachaça artesanal 'Melzinho'.
+        NÃO redesenhe ou altere o rótulo do produto, pois os detalhes visuais da garrafa serão preservados da foto de referência.
         """
     else:
         prompt_sistema += """
-        No campo 'sugestao_prompt_imagem', descreva um cenário publicitário profissional em INGLÊS adequado
-        ao nicho e ao estilo estético selecionado. Descreva apenas a composição cênica, sem textos, marcas
-        d'água ou banners.
+        No campo 'sugestao_prompt_imagem', crie uma descrição em INGLÊS para uma composição publicitária comercial de alto impacto (commercial social media advertising flyer poster) para a cachaça artesanal 'Melzinho'.
+        Descreva o cenário publicitário de estúdio, iluminação comercial quente e composição limpa e moderna.
         """
 
     contexto_clima = get_climate_context()
@@ -100,16 +146,75 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
 
     conteudo_gemini.append(prompt_sistema)
 
-    response = client.models.generate_content(
-        model=TEXT_MODEL,
-        contents=conteudo_gemini,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=GeminiPromptModel,
-        ),
-    )
+    # 1. Tenta Gemini com retry automático em caso de sobrecarga (503 / UNAVAILABLE)
+    last_error = None
+    for attempt in range(1, 3):
+        try:
+            response = client.models.generate_content(
+                model=TEXT_MODEL,
+                contents=conteudo_gemini,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=GeminiPromptModel,
+                ),
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            last_error = e
+            err_msg = str(e)
+            print(f"[Gemini] Tentativa {attempt}/2 falhou: {err_msg[:120]}")
+            if attempt < 2 and ("503" in err_msg or "UNAVAILABLE" in err_msg or "high demand" in err_msg):
+                time.sleep(2)
+                continue
+            break
 
-    return json.loads(response.text)
+    # 2. Se o Gemini falhar por indisponibilidade temporária, aciona contingência na OpenAI
+    print("[IA] Gemini indisponível no momento. Acionando fallback automático com OpenAI gpt-4o-mini...")
+    try:
+        return generate_campaign_copy_openai_fallback(dados, prompt_sistema)
+    except Exception as fallback_err:
+        print(f"[Fallback OpenAI] Erro na contingência: {fallback_err}")
+        raise HTTPException(
+            status_code=503,
+            detail="Os servidores de IA estão com alta demanda temporária. Por favor, tente novamente em alguns instantes."
+        )
+
+
+def generate_campaign_copy_openai_fallback(dados: CampanhaInput, prompt_sistema: str) -> dict:
+    """
+    Fallback de alta disponibilidade: se a API do Gemini estiver fora do ar ou sobrecarregada,
+    usa o modelo gpt-4o-mini da OpenAI para gerar a copy e o prompt publicitário da campanha.
+    """
+    from src.services.openai_service import client as openai_client
+    response = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    f"{prompt_sistema}\n\n"
+                    "Responda OBRIGATORIAMENTE em formato JSON válido contendo exatamente estas 3 chaves:\n"
+                    "{\n"
+                    '  "titulo_campanha": "Título chamativo",\n'
+                    '  "legenda_instagram": "Legenda concisa e engajadora",\n'
+                    '  "sugestao_prompt_imagem": "Prompt em inglês descrevendo o cenário comercial"\n'
+                    "}"
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Gere a campanha de marketing para o nicho '{dados.nicho}' e objetivo '{dados.objetivo}'"
+                    + (f" e evento comemorativo '{dados.evento}'" if dados.evento and dados.evento.strip() else "")
+                    + "."
+                )
+            },
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.7,
+    )
+    content = response.choices[0].message.content
+    return json.loads(content)
 
 
 def generate_opportunity_prompt(title: str, description: str | None = None) -> str:

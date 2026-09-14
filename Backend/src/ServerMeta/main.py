@@ -1,15 +1,20 @@
 import os
 import time
-from fastapi import HTTPException, APIRouter, Depends
+from datetime import datetime, timezone
+from fastapi import HTTPException, APIRouter, Depends, status
 from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
+from sqlalchemy.orm import Session
 
-from src.dependencies.api_dependency import get_current_user, AuthenticatedUser
+from src.dependencies.api_dependency import get_db, get_current_user, AuthenticatedUser
+from src.models.api_models import CampaignScheduleRequest, CampaignDbResponse
+from src.repositories.campaign_repository import CampaignRepository
 
 load_dotenv()
 
 router = APIRouter(prefix="/api/instagram", tags=["Meta Instagram"])
+campaign_repo = CampaignRepository()
 
 
 # Puxa os dados com segurança. Se não encontrar, assume None.
@@ -24,73 +29,144 @@ class PostSchema(BaseModel):
     imageUrl: str
     caption: str
 
+
+def publish_to_instagram_core(image_url: str, caption: str) -> dict:
+    """
+    Função modular de disparo para a Meta Graph API.
+    Pode ser executada diretamente por rotas síncronas ou pelo worker do APScheduler.
+    Retorna dicionário contendo 'post_id' e 'status'.
+    Levanta exceção detalhada em caso de falha.
+    """
+    if not INSTAGRAM_ID or not ACCESS_TOKEN:
+        raise ValueError("Configuração do servidor incompleta. Variáveis INSTAGRAM_ID ou ACCESS_TOKEN ausentes no .env.")
+
+    params_container = {
+        "image_url": image_url,
+        "caption": caption,
+        "access_token": ACCESS_TOKEN
+    }
+    print(f"[Meta Core] Criando container de mídia com image_url: {image_url[:80]}...")
+    response_container = requests.post(f"{BASE_URL}/media", params=params_container)
+    
+    if not response_container.ok:
+        print(f"[Meta Core] ERRO ao criar container: {response_container.status_code} - {response_container.text}")
+    response_container.raise_for_status() 
+    
+    creation_id = response_container.json().get("id")
+    print(f"[Meta Core] Container criado com sucesso! ID: {creation_id}")
+
+    # Polling do status do container para garantir que a imagem foi baixada e processada pelo Facebook antes de publicar
+    status_code = "IN_PROGRESS"
+    attempts = 0
+    max_attempts = 15
+    
+    while status_code == "IN_PROGRESS" and attempts < max_attempts:
+        attempts += 1
+        print(f"[Meta Core] Verificando status do container (Tentativa {attempts}/{max_attempts})...")
+        time.sleep(3)
+        
+        url_status = f"https://graph.facebook.com/v25.0/{creation_id}"
+        res_status = requests.get(url_status, params={"fields": "status_code", "access_token": ACCESS_TOKEN})
+        res_status.raise_for_status()
+        status_code = res_status.json().get("status_code", "IN_PROGRESS")
+        print(f"[Meta Core] Status do container: {status_code}")
+
+    if status_code != "FINISHED":
+        raise RuntimeError(f"O contêiner de mídia não pôde ser processado a tempo pela Meta. Status final: {status_code}")
+
+    params_publish = {
+        "creation_id": creation_id,
+        "access_token": ACCESS_TOKEN
+    }
+    response_publish = requests.post(f"{BASE_URL}/media_publish", params=params_publish)
+    response_publish.raise_for_status()
+
+    post_id = response_publish.json().get("id")
+    print(f"[Meta Core] Publicado com sucesso! Post ID: {post_id}")
+    return {
+        "status": "Sucesso",
+        "post_id": post_id,
+        "mensagem": "Publicado com sucesso no Instagram!"
+    }
+
+
 @router.post("/postar")
 def postar_no_instagram(
     payload: PostSchema,
     current_user: AuthenticatedUser = Depends(get_current_user)
 ):
-    if not INSTAGRAM_ID or not ACCESS_TOKEN:
-        raise HTTPException(
-            status_code=500, 
-            detail="Configuração do servidor incompleta. Verifique as variáveis de ambiente."
-        )
-
     try:
-        params_container = {
-            "image_url": payload.imageUrl,
-            "caption": payload.caption,
-            "access_token": ACCESS_TOKEN
-        }
-        print(f"Criando container de mídia com image_url: {payload.imageUrl[:80]}...")
-        response_container = requests.post(f"{BASE_URL}/media", params=params_container)
-        
-        if not response_container.ok:
-            print(f"ERRO ao criar container: {response_container.status_code} - {response_container.text}")
-        response_container.raise_for_status() 
-        
-        creation_id = response_container.json().get("id")
-        print(f"Container criado com sucesso! ID: {creation_id}")
-
-        # Polling do status do container para garantir que a imagem foi baixada e processada pelo Facebook antes de publicar
-        status_code = "IN_PROGRESS"
-        attempts = 0
-        max_attempts = 15
-        
-        while status_code == "IN_PROGRESS" and attempts < max_attempts:
-            attempts += 1
-            print(f"Verificando status do container (Tentativa {attempts}/{max_attempts})...")
-            time.sleep(3)
-            
-            url_status = f"https://graph.facebook.com/v25.0/{creation_id}"
-            res_status = requests.get(url_status, params={"fields": "status_code", "access_token": ACCESS_TOKEN})
-            res_status.raise_for_status()
-            status_code = res_status.json().get("status_code", "IN_PROGRESS")
-            print(f"Status do container: {status_code}")
-
-        if status_code != "FINISHED":
-            raise HTTPException(
-                status_code=400,
-                detail=f"O contêiner de mídia não pôde ser processado a tempo. Status final: {status_code}"
-            )
-
-        params_publish = {
-            "creation_id": creation_id,
-            "access_token": ACCESS_TOKEN
-        }
-        response_publish = requests.post(f"{BASE_URL}/media_publish", params=params_publish)
-        response_publish.raise_for_status()
-
-        return {
-            "status": "Sucesso",
-            "post_id": response_publish.json().get("id"),
-            "mensagem": "Publicado com sucesso no Instagram!"
-        }
-
+        return publish_to_instagram_core(payload.imageUrl, payload.caption)
     except requests.exceptions.HTTPError as err:
         error_details = err.response.json() if err.response else str(err)
         raise HTTPException(status_code=400, detail={"erro": "Falha na API da Meta", "detalhes": error_details})
+    except ValueError as val_err:
+        raise HTTPException(status_code=500, detail=str(val_err))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agendar", response_model=CampaignDbResponse, status_code=status.HTTP_201_CREATED)
+def agendar_publicacao_instagram(
+    payload: CampaignScheduleRequest,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """
+    Enfileira uma publicação para disparo futuro no Instagram.
+    Valida que a data/hora fornecida não está no passado.
+    """
+    now_utc = datetime.now(timezone.utc)
+    scheduled_dt = payload.scheduled_at
+    if scheduled_dt.tzinfo is None:
+        scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
+    else:
+        scheduled_dt = scheduled_dt.astimezone(timezone.utc)
+
+    if scheduled_dt <= now_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A data e horário de agendamento devem estar no futuro."
+        )
+
+    payload.scheduled_at = scheduled_dt
+    scheduled_campaign = campaign_repo.schedule(db, payload)
+    return scheduled_campaign
+
+
+@router.get("/agendados", response_model=list[CampaignDbResponse])
+def listar_campanhas_agendadas(
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Retorna todas as campanhas em fila com status SCHEDULED ou PROCESSING."""
+    return campaign_repo.get_scheduled(db)
+
+
+@router.delete("/agendados/{campaign_id}")
+def cancelar_campanha_agendada(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+    current_user: AuthenticatedUser = Depends(get_current_user)
+):
+    """Cancela o agendamento de uma publicação futura, mudando seu status para CANCELLED."""
+    campaign = campaign_repo.get_by_id(db, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campanha agendada não encontrada.")
+
+    if campaign.status not in ["SCHEDULED", "PENDING_APPROVAL"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Não é possível cancelar uma publicação com status '{campaign.status}'."
+        )
+
+    campaign_repo.cancel_scheduled(db, campaign_id)
+    return {
+        "status": "Sucesso",
+        "mensagem": f"Publicação {campaign_id} cancelada com sucesso.",
+        "campaign_id": campaign_id,
+        "novo_status": "CANCELLED"
+    }
 
 @router.get("/dashboard/geral")
 def obtener_dashboard_geral(current_user: AuthenticatedUser = Depends(get_current_user)):

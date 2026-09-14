@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 from src.models.database_models import Campaign
-from src.models.api_models import CampaignCreate
+from src.models.api_models import CampaignCreate, CampaignScheduleRequest
 
 
 class CampaignRepository:
@@ -50,6 +50,44 @@ class CampaignRepository:
         db.delete(campaign)
         db.commit()
         return True
+
+    def get_scheduled(self, db: Session):
+        return (
+            db.query(Campaign)
+            .filter(Campaign.status.in_(["SCHEDULED", "PROCESSING"]))
+            .order_by(Campaign.scheduled_at.asc())
+            .all()
+        )
+
+    def schedule(self, db: Session, data: CampaignScheduleRequest) -> Campaign:
+        campaign = Campaign(
+            title=data.title or "Campanha Agendada",
+            campaign=data.caption,
+            description=data.imageUrl,
+            date=data.scheduled_at.date() if hasattr(data.scheduled_at, "date") else data.scheduled_at,
+            opportunity=str(data.opportunity or "1"),
+            id_PostInstagram=None,
+            status="SCHEDULED",
+            scheduled_at=data.scheduled_at,
+            publish_mode=data.publish_mode or "AUTONOMOUS",
+            original_image_url=data.original_image_url,
+            fidelity_score=data.fidelity_score,
+            approved=True,
+            generation_attempts=[],
+        )
+        db.add(campaign)
+        db.commit()
+        db.refresh(campaign)
+        return campaign
+
+    def cancel_scheduled(self, db: Session, campaign_id: int) -> Optional[Campaign]:
+        campaign = self.get_by_id(db, campaign_id)
+        if not campaign:
+            return None
+        campaign.status = "CANCELLED"
+        db.commit()
+        db.refresh(campaign)
+        return campaign
 
     # ------------------------------------------------------------------ #
     # NOVOS — úteis se você quiser reprocessar/reaprovar uma campanha

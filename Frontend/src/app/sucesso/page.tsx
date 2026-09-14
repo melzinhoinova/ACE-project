@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { TopBar } from "@/components/ace/TopBar";
-import { fetchCampaigns, CampaignDb } from "@/lib/opportunities-api";
+import { 
+  fetchCampaigns, 
+  fetchScheduledCampaigns, 
+  cancelScheduledCampaign, 
+  CampaignDb 
+} from "@/lib/opportunities-api";
+import { getApiBaseUrl } from "@/lib/references-api";
 import { 
   ArrowLeft,
   ArrowRight, 
@@ -18,7 +24,15 @@ import {
   UserCheck, 
   TrendingUp, 
   History,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  Clock,
+  Calendar,
+  CalendarClock,
+  Trash2,
+  Zap,
+  Shield,
+  RotateCcw
 } from "lucide-react";
 
 function useCounter(target: number, duration = 1200) {
@@ -48,6 +62,25 @@ function formatCampaignOptionDate(dStr: string): string {
   return dStr;
 }
 
+function formatScheduledDateTime(isoStr?: string | null): string {
+  if (!isoStr) return "Data não informada";
+  try {
+    const d = new Date(isoStr);
+    return (
+      d.toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " (Horário de Brasília)"
+    );
+  } catch {
+    return isoStr;
+  }
+}
+
 function Metric({ icon, label, value, sub, delay, pulse, highlight }: any) {
   return (
     <div className={`animate-float-up rounded-3xl p-[1.5px] ${highlight ? "bg-gradient-brand animate-gradient-shift" : "bg-border"}`} style={{ animationDelay: `${delay}ms` }}>
@@ -73,17 +106,36 @@ function Metric({ icon, label, value, sub, delay, pulse, highlight }: any) {
 
 export default function DashboardSucessoPage() {
   const router = useRouter();
-  const [abaAtiva, setAbaAtiva] = useState<"geral" | "post">("geral");
+  const [abaAtiva, setAbaAtiva] = useState<"geral" | "post" | "agendados">("geral");
   const [dadosGeral, setDadosGeral] = useState<any>({ followers: 0, impressions: 0, reach: 0, profileViews: 0, username: "carregando" });
   const [dadosPost, setDadosPost] = useState<any>({ likes: 0, commentsCount: 0, reach: 0, comentarios: [] });
   const [share, setShare] = useState(false);
+  const [isAgendado, setIsAgendado] = useState(false);
+  const [modoAgendado, setModoAgendado] = useState<string | null>(null);
+
+  // Fila de Agendamentos
+  const [scheduledList, setScheduledList] = useState<CampaignDb[]>([]);
+  const [loadingScheduled, setLoadingScheduled] = useState(false);
+  const [cancelingId, setCancelingId] = useState<number | null>(null);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("agendado") === "true") {
+        setIsAgendado(true);
+        setModoAgendado(params.get("modo"));
+        setAbaAtiva("agendados");
+      }
+    }
+  }, []);
 
   // Histórico de campanhas salvas no banco
   const [campaignsHistory, setCampaignsHistory] = useState<CampaignDb[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [loadingPost, setLoadingPost] = useState(false);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+  const API_BASE = getApiBaseUrl();
 
   const fetchPostMetrics = async (mediaId: string) => {
     setLoadingPost(true);
@@ -123,6 +175,35 @@ export default function DashboardSucessoPage() {
     }
   };
 
+  const carregarAgendados = async () => {
+    setLoadingScheduled(true);
+    try {
+      const data = await fetchScheduledCampaigns();
+      setScheduledList(data || []);
+    } catch (err) {
+      console.error("Erro ao buscar agendados:", err);
+    } finally {
+      setLoadingScheduled(false);
+    }
+  };
+
+  const handleCancelScheduled = async (id: number, title?: string) => {
+    const confirmMsg = `Tem certeza que deseja cancelar o agendamento da publicação "${title || 'Campanha'}"?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setCancelingId(id);
+    try {
+      await cancelScheduledCampaign(id);
+      setScheduledList((prev) => prev.filter((item) => item.id !== id));
+      setStatusNotice(`Agendamento da publicação "${title || 'Campanha'}" cancelado com sucesso.`);
+      setTimeout(() => setStatusNotice(null), 5000);
+    } catch (err: any) {
+      alert(`Erro ao cancelar agendamento: ${err.message || "Tente novamente mais tarde."}`);
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
   useEffect(() => {
     async function carregarDashboard() {
       try {
@@ -140,7 +221,10 @@ export default function DashboardSucessoPage() {
         const dbCampaigns = await fetchCampaigns().catch(() => []);
         setCampaignsHistory(dbCampaigns || []);
 
-        // 3. Seleção Padrão (Auto-seleciona a campanha mais recente gravada)
+        // 3. Carrega fila de agendamentos
+        carregarAgendados();
+
+        // 4. Seleção Padrão (Auto-seleciona a campanha mais recente gravada)
         if (dbCampaigns && dbCampaigns.length > 0) {
           const firstWithMedia = dbCampaigns.find((c) => c.id_PostInstagram) || dbCampaigns[0];
           setSelectedCampaignId(firstWithMedia.id);
@@ -218,8 +302,22 @@ export default function DashboardSucessoPage() {
             Painel de <span className="text-gradient-brand">resultados</span>
           </h1>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
-            Monitoramento de performance
+            Monitoramento de performance e gestão de publicações
           </p>
+
+          {isAgendado && (
+            <div className="mx-auto max-w-xl rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300 flex items-center justify-center gap-3 animate-float-up shadow-sm mt-4">
+              <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
+              <div className="text-xs sm:text-sm font-medium text-left">
+                <strong>Publicação agendada com sucesso!</strong>
+                <div className="text-xs text-emerald-400/80 mt-0.5">
+                  {modoAgendado === "manual" 
+                    ? "No horário programado, você receberá um alerta por e-mail para autorizar o disparo." 
+                    : "O sistema processará e publicará a mídia no feed do Instagram automaticamente no horário programado."}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Seleção de Abas */}
@@ -236,6 +334,20 @@ export default function DashboardSucessoPage() {
               className={`rounded-full px-6 py-2.5 text-xs font-bold transition-all duration-300 ${abaAtiva === "post" ? "bg-card text-foreground shadow-md scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
               Métricas do Post
+            </button>
+            <button 
+              onClick={() => {
+                setAbaAtiva("agendados");
+                carregarAgendados();
+              }} 
+              className={`rounded-full px-6 py-2.5 text-xs font-bold transition-all duration-300 flex items-center gap-2 ${abaAtiva === "agendados" ? "bg-card text-foreground shadow-md scale-105" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <span>Fila de Agendamentos</span>
+              {scheduledList.length > 0 && (
+                <span className="rounded-full bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-extrabold leading-none">
+                  {scheduledList.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -296,7 +408,7 @@ export default function DashboardSucessoPage() {
                 </div>
               </div>
             </div>
-          ) : (
+          ) : abaAtiva === "post" ? (
             <div className="space-y-8">
               {/* SELETOR DE HISTÓRICO DE CAMPANHAS */}
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
@@ -322,7 +434,7 @@ export default function DashboardSucessoPage() {
                     ) : (
                       campaignsHistory.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.title} — {formatCampaignOptionDate(c.date)}
+                          {c.title} — {formatCampaignOptionDate(c.date)}{c.status === "SCHEDULED" ? " ⏳ [Agendado]" : ""}
                         </option>
                       ))
                     )}
@@ -369,9 +481,172 @@ export default function DashboardSucessoPage() {
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Notificação temporária de cancelamento */}
+              {statusNotice && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-300 flex items-center justify-between gap-3 animate-float-up shadow-sm">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-sm font-medium">
+                    <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                    <span>{statusNotice}</span>
+                  </div>
+                  <button onClick={() => setStatusNotice(null)} className="text-emerald-400 hover:text-emerald-200">
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Cabeçalho da Fila de Agendamentos */}
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-brand-soft">
+                    <CalendarClock size={20} className="text-foreground" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fila de Publicações Agendadas</div>
+                    <div className="text-xs text-muted-foreground">Campanhas programadas para publicação automática ou notificação manual.</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={carregarAgendados}
+                    disabled={loadingScheduled}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-background/80 px-4 py-2.5 text-xs font-bold text-muted-foreground transition hover:text-foreground hover:bg-card shadow-sm disabled:opacity-50"
+                  >
+                    <RotateCcw size={14} className={loadingScheduled ? "animate-spin text-primary" : ""} />
+                    Atualizar Fila
+                  </button>
+                </div>
+              </div>
+
+              {/* Conteúdo da Fila */}
+              {loadingScheduled && scheduledList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card p-12 text-center shadow-card">
+                  <Loader2 size={32} className="animate-spin text-primary mb-3" />
+                  <p className="text-sm font-semibold text-muted-foreground">Carregando fila de agendamentos...</p>
+                </div>
+              ) : scheduledList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card p-12 text-center shadow-card animate-float-up">
+                  <div className="grid h-16 w-16 place-items-center rounded-2xl bg-secondary/50 text-muted-foreground mb-4">
+                    <Calendar size={32} className="opacity-60" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground">Nenhuma publicação agendada</h3>
+                  <p className="mt-1.5 max-w-md text-xs sm:text-sm text-muted-foreground">
+                    Você não possui postagens na fila no momento. Crie e agende novas campanhas no Estúdio de Criação para que sejam publicadas automaticamente.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                    <button
+                      onClick={() => router.push("/radar")}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-brand px-5 py-3 text-xs font-bold text-white shadow-card transition hover:scale-[1.02]"
+                    >
+                      <Sparkles size={14} /> Explorar Oportunidades no Radar
+                    </button>
+                    <button
+                      onClick={() => router.push("/gerador")}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-5 py-3 text-xs font-bold text-muted-foreground transition hover:text-foreground hover:bg-card"
+                    >
+                      Ir ao Estúdio de Criação
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {scheduledList.map((item) => {
+                    const isAutonomous = item.publish_mode === "AUTONOMOUS";
+                    const isProcessing = item.status === "PROCESSING";
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-3xl border border-border/60 bg-card overflow-hidden shadow-card flex flex-col justify-between transition hover:border-border duration-200 animate-float-up"
+                      >
+                        {/* Imagem / Thumbnail */}
+                        <div className="relative aspect-video w-full bg-secondary/30 overflow-hidden border-b border-border/40">
+                          {item.description && (item.description.startsWith("data:image") || item.description.startsWith("http")) ? (
+                            <img
+                              src={item.description}
+                              alt={item.title || "Publicação Agendada"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground/60">
+                              <Sparkles size={28} />
+                              <span className="text-[11px] font-medium">Prévia não disponível</span>
+                            </div>
+                          )}
+
+                          {/* Badges sobre a imagem */}
+                          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur-md border shadow-sm ${
+                              isAutonomous 
+                                ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40" 
+                                : "bg-amber-950/80 text-amber-300 border-amber-500/40"
+                            }`}>
+                              {isAutonomous ? <Zap size={10} className="shrink-0" /> : <Shield size={10} className="shrink-0" />}
+                              {isAutonomous ? "Automática" : "Manual"}
+                            </span>
+
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur-md border shadow-sm ${
+                              isProcessing
+                                ? "bg-purple-950/80 text-purple-300 border-purple-500/40"
+                                : "bg-sky-950/80 text-sky-300 border-sky-500/40"
+                            }`}>
+                              {isProcessing ? (
+                                <><Loader2 size={10} className="animate-spin shrink-0" /> Disparando</>
+                              ) : (
+                                <><Clock size={10} className="shrink-0" /> Agendado</>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Detalhes do Card */}
+                        <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                          <div className="space-y-2">
+                            <h4 className="font-bold text-sm text-foreground line-clamp-1">
+                              {item.title || "Campanha Agendada"}
+                            </h4>
+
+                            <div className="flex items-center gap-1.5 text-xs text-brand font-semibold">
+                              <Clock size={12} className="shrink-0" />
+                              <span>{formatScheduledDateTime(item.scheduled_at)}</span>
+                            </div>
+
+                            {item.campaign && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed bg-background/40 rounded-xl p-2.5 border border-border/40">
+                                {item.campaign}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Rodapé do Card com Ação de Cancelamento */}
+                          <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground">
+                              ID: #{item.id}
+                            </span>
+
+                            <button
+                              onClick={() => handleCancelScheduled(item.id, item.title)}
+                              disabled={cancelingId === item.id || isProcessing}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20 hover:border-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {cancelingId === item.id ? (
+                                <><Loader2 size={12} className="animate-spin" /> Cancelando...</>
+                              ) : (
+                                <><Trash2 size={12} /> Cancelar</>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </div>
-
 
       </main>
       

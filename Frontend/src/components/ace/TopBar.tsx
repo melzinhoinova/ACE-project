@@ -39,7 +39,7 @@ export function TopBar({ children }: AppShellProps) {
         {/* Brand Logo & Collapse Toggle */}
         <div className={`flex items-center pb-6 border-b border-border/40 ${isCollapsed ? "flex-col gap-4 justify-center" : "justify-between"}`}>
           <Link href="/radar" className="flex items-center gap-2">
-            <AceLogo size="sm" />
+            <AceLogo size="sm" onlyRocket={isCollapsed} />
             {!isCollapsed && <span className="text-[10px] tracking-wider uppercase font-semibold text-muted-foreground">Studio</span>}
           </Link>
           <button

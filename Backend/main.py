@@ -7,7 +7,10 @@ from src.router.ai_router import router as ai_router
 from src.router.upload_router import router as upload_router
 from src.ServerMeta.main import router as meta_router
 from src.router.climate_data_router import router as climate_router
-from src.services.scheduler_service import start_scheduler, stop_scheduler, check_and_send_opportunity_alerts
+from src.router.references_router import router as references_router
+from src.services.scheduler_service import (
+    start_scheduler, stop_scheduler, check_and_send_opportunity_alerts, process_scheduled_campaigns
+)
 from src.services.email_service import send_opportunity_alert
 from src.services.gemini_service import generate_opportunity_prompt
 
@@ -36,6 +39,7 @@ app.include_router(ai_router)
 app.include_router(upload_router)
 app.include_router(meta_router)
 app.include_router(climate_router)
+app.include_router(references_router)
 
 
 @app.get("/")
@@ -68,5 +72,13 @@ def run_scheduler_check():
     """Força a execução da verificação diária de oportunidades (10h da manhã) imediatamente."""
     results = check_and_send_opportunity_alerts()
     return {"status": "executed", "alerts_processed": results}
+
+
+@app.post("/api/run-scheduled-campaigns-check")
+def run_scheduled_campaigns_check():
+    """Força a execução imediata do worker de publicação de campanhas agendadas."""
+    results = process_scheduled_campaigns()
+    return {"status": "executed", "campaigns_processed": results}
+
 
 

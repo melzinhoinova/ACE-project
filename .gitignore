@@ -55,3 +55,6 @@ next-env.d.ts
 openspec/
 .agents*
 
+# Local manual tests & raw assets (hosted on Supabase Storage)
+manual_teste/
+assets/

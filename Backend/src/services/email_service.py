@@ -245,3 +245,81 @@ def send_invite_email(
         return {"status": "error", "message": str(e)}
 
 
+def send_manual_approval_alert(
+    campaign_title: str,
+    campaign_date: str,
+    campaign_id: int,
+    recipient_email: str | None = None,
+) -> dict:
+    """
+    Envia e-mail ao gestor quando uma campanha configurada em modo MANUAL atinge o horário programado,
+    alertando que a campanha está em PENDING_APPROVAL aguardando autorização para envio.
+    """
+    to_email = recipient_email or os.getenv("NOTIFICATION_DEST_EMAIL")
+    if not to_email:
+        print("[EmailService] AVISO: NOTIFICATION_DEST_EMAIL não configurado. E-mail de aprovação manual não enviado.")
+        return {"status": "skipped", "reason": "Destinatário não configurado"}
+
+    subject = f"🔔 [Aprovação Necessária] Sua campanha '{campaign_title}' está pronta para publicação!"
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    approval_url = f"{frontend_url}/aprovar"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0a0a0c; color: #ededed; margin: 0; padding: 24px; }}
+        .card {{ max-width: 560px; margin: 0 auto; background: #141417; border: 1px solid #27272a; border-radius: 16px; padding: 32px; }}
+        .badge {{ display: inline-block; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 9999px; margin-bottom: 12px; }}
+        .title {{ font-size: 22px; font-weight: 800; color: #ffffff; margin-bottom: 8px; }}
+        .desc {{ font-size: 14px; color: #a1a1aa; line-height: 1.6; margin-bottom: 24px; }}
+        .cta-btn {{ display: inline-block; background: linear-gradient(135deg, #6366f1, #a855f7); color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 10px; }}
+        .footer {{ font-size: 12px; color: #71717a; text-align: center; margin-top: 32px; border-top: 1px solid #27272a; padding-top: 16px; }}
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <span class="badge">Aprovação Manual Pendente</span>
+        <div class="title">{campaign_title}</div>
+        <div class="desc">
+          O horário programado para a sua campanha ({campaign_date}) foi atingido. Como você optou pelo modo <strong>Publicação Manual</strong>, a publicação está aguardando sua autorização final.
+        </div>
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="{approval_url}" class="cta-btn">Revisar e Publicar Agora</a>
+        </div>
+        <div class="footer">
+          ACE — AutoSales Campaign Engine © 2026
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    if os.getenv("BREVO_API_KEY"):
+        res_brevo = send_email_via_brevo(to_email, subject, html_content)
+        if res_brevo.get("status") == "success":
+            return res_brevo
+
+    api_key = os.getenv("RESEND_API_KEY")
+    if not api_key:
+        return {"status": "skipped", "reason": "Nenhum provedor de e-mail configurado"}
+
+    resend.api_key = api_key
+    from_email = os.getenv("RESEND_FROM_EMAIL", "ACE Plataforma <alertas@resend.dev>")
+    params: resend.Emails.SendParams = {
+        "from": from_email,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content,
+    }
+    try:
+        response = resend.Emails.send(params)
+        return {"status": "success", "id": response.get("id")}
+    except Exception as e:
+        print(f"[EmailService] Erro ao enviar alerta de aprovação manual: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+

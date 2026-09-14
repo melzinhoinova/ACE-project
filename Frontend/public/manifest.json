@@ -1,0 +1,56 @@
+{
+  "name": "ACE — Agente de Criação Estratégica",
+  "short_name": "ACE",
+  "description": "Plataforma autônoma de criação de campanhas e inteligência estratégica de marketing para marcas.",
+  "start_url": "/radar",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#09090b",
+  "theme_color": "#f97316",
+  "categories": ["business", "marketing", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Radar de Oportunidades",
+      "short_name": "Radar",
+      "description": "Visualize as datas comemorativas e tendências sazonais",
+      "url": "/radar",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Estúdio de Criação",
+      "short_name": "Estúdio",
+      "description": "Crie campanhas e artes publicitárias com IA",
+      "url": "/gerador",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Painel de Resultados",
+      "short_name": "Resultados",
+      "description": "Acompanhe métricas e fila de agendamentos",
+      "url": "/sucesso",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

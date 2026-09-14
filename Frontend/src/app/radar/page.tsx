@@ -324,7 +324,28 @@ export default function RadarPage() {
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Calendário estratégico de oportunidades e datas comemorativas</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => {
+                const everydayPost = {
+                  id: "dia-a-dia",
+                  nome: "Publicação do Dia a Dia",
+                  data: "Feed Diário · Sem Data",
+                  description: "Post casual de valorização da cachaça artesanal Melzinho, degustação, lifestyle e atmosfera de bar.",
+                  tipo: "Cotidiano",
+                  escopo: "nacional",
+                  score: "high",
+                };
+                sessionStorage.setItem("ace.selectedHoliday", JSON.stringify(everydayPost));
+                router.push("/gerador");
+              }}
+              className="inline-flex items-center gap-2 rounded-2xl border border-primary/40 bg-card/70 px-4 py-2 text-xs font-bold text-foreground shadow-sm transition-all hover:bg-card hover:border-primary hover:scale-[1.02] active:scale-[0.98] group"
+              title="Criar um post espontâneo para o feed sem data comemorativa específica"
+            >
+              <Sparkles size={16} className="text-primary fill-primary/20 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110 shrink-0" />
+              <span>Publicação do Dia a Dia</span>
+            </button>
+
             <button
               onClick={handleOpenCreateModal}
               className="inline-flex items-center gap-2 rounded-2xl bg-gradient-brand px-4 py-2 text-xs font-semibold text-white shadow-lg glow-brand transition hover:scale-[1.03] active:scale-[0.98]"
@@ -389,7 +410,7 @@ export default function RadarPage() {
 
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl card-surface px-6 py-5">
               <div className="flex items-start gap-3 text-sm text-muted-foreground">
-                <Sparkles size={16} className="text-gradient-brand" />
+                <Sparkles size={16} className="text-primary mt-0.5 shrink-0" />
                 A IA já está pronta para gerar arte, legendas e segmentação para{" "}
                 <span className="font-semibold text-foreground" title={selected.nome}>{formatBannerNome(selected.nome)}</span>.
               </div>
@@ -702,7 +723,7 @@ function UpcomingList({
     <div className="rounded-3xl card-surface p-5 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <TrendingUp size={16} className="text-gradient-brand" />
+          <TrendingUp size={16} className="text-primary" />
           Próximas oportunidades
         </div>
       </div>

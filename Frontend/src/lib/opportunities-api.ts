@@ -28,7 +28,8 @@ export type OpportunityUpdateInput = {
   local?: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { getApiBaseUrl } from "@/lib/references-api";
+export { getApiBaseUrl };
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
@@ -48,7 +49,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
 export async function fetchOpportunities(all: boolean = true): Promise<Opportunity[]> {
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_BASE_URL}/api/oportunidades?all=${all}`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/oportunidades?all=${all}`, {
       cache: "no-store",
       headers,
     });
@@ -71,7 +72,7 @@ export async function fetchOpportunities(all: boolean = true): Promise<Opportuni
 
 export async function createOpportunity(data: OpportunityCreateInput): Promise<Opportunity> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE_URL}/api/oportunidades`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/oportunidades`, {
     method: "POST",
     headers,
     body: JSON.stringify(data),
@@ -85,7 +86,7 @@ export async function createOpportunity(data: OpportunityCreateInput): Promise<O
 
 export async function updateOpportunity(id: number, data: OpportunityUpdateInput): Promise<Opportunity> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE_URL}/api/oportunidades/${id}`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/oportunidades/${id}`, {
     method: "PUT",
     headers,
     body: JSON.stringify(data),
@@ -99,7 +100,7 @@ export async function updateOpportunity(id: number, data: OpportunityUpdateInput
 
 export async function deleteOpportunity(id: number): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE_URL}/api/oportunidades/${id}`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/oportunidades/${id}`, {
     method: "DELETE",
     headers,
   });
@@ -124,6 +125,17 @@ export type CampaignInput = {
   generation_attempts?: any[];
 };
 
+export type CampaignScheduleInput = {
+  title?: string;
+  imageUrl: string;
+  caption: string;
+  scheduled_at: string; // ISO 8601 string
+  publish_mode?: "AUTONOMOUS" | "MANUAL";
+  opportunity?: string;
+  original_image_url?: string;
+  fidelity_score?: number;
+};
+
 export type CampaignDb = {
   id: number;
   title: string;
@@ -132,6 +144,10 @@ export type CampaignDb = {
   date: string;
   opportunity: string;
   id_PostInstagram?: string | null;
+  status?: string | null;
+  scheduled_at?: string | null;
+  publish_mode?: string | null;
+  error_log?: string | null;
   original_image_url?: string | null;
   fidelity_score?: number | null;
   approved?: boolean;
@@ -140,7 +156,7 @@ export type CampaignDb = {
 
 export async function saveCampaign(data: CampaignInput): Promise<CampaignDb> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE_URL}/api/campanhas`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/campanhas`, {
     method: "POST",
     headers,
     body: JSON.stringify(data),
@@ -154,8 +170,8 @@ export async function saveCampaign(data: CampaignInput): Promise<CampaignDb> {
 
 export async function fetchCampaigns(opportunity?: string): Promise<CampaignDb[]> {
   const url = opportunity
-    ? `${API_BASE_URL}/api/campanhas?opportunity=${opportunity}`
-    : `${API_BASE_URL}/api/campanhas`;
+    ? `${getApiBaseUrl()}/api/campanhas?opportunity=${opportunity}`
+    : `${getApiBaseUrl()}/api/campanhas`;
   const headers = await getAuthHeaders();
   const res = await fetch(url, { cache: "no-store", headers });
   if (!res.ok) {
@@ -163,4 +179,44 @@ export async function fetchCampaigns(opportunity?: string): Promise<CampaignDb[]
   }
   return await res.json();
 }
+
+export async function scheduleCampaign(data: CampaignScheduleInput): Promise<CampaignDb> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${getApiBaseUrl()}/api/instagram/agendar`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Erro ao agendar publicação no Instagram");
+  }
+  return await res.json();
+}
+
+export async function fetchScheduledCampaigns(): Promise<CampaignDb[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${getApiBaseUrl()}/api/instagram/agendados`, {
+    cache: "no-store",
+    headers,
+  });
+  if (!res.ok) {
+    throw new Error("Erro ao buscar publicações agendadas");
+  }
+  return await res.json();
+}
+
+export async function cancelScheduledCampaign(campaignId: number): Promise<any> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${getApiBaseUrl()}/api/instagram/agendados/${campaignId}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Erro ao cancelar publicação agendada");
+  }
+  return await res.json();
+}
+
 

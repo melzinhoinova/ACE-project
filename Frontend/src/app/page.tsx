@@ -35,7 +35,7 @@ export default function LandingPage() {
       {/* Seção Principal (Hero) */}
       <div className="relative z-10 mx-auto max-w-4xl w-full px-6 py-12 flex flex-col items-center text-center my-auto space-y-8">
         <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3.5 py-2 text-xs text-muted-foreground animate-float-up">
-          <Sparkles size={12} className="text-gradient-brand animate-pulse" />
+          <Sparkles size={14} className="text-primary animate-pulse" />
           AutoSales Camp Engine
         </div>
 

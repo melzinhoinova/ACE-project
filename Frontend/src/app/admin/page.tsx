@@ -25,8 +25,25 @@ import {
   X,
   UserX,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Image as ImageIcon,
+  Upload,
+  Eye,
+  ExternalLink,
+  ToggleLeft,
+  ToggleRight,
+  Palette,
+  SlidersHorizontal,
 } from "lucide-react";
+import {
+  CampaignReference,
+  fetchReferences,
+  createReference,
+  updateReference,
+  deleteReference,
+  getApiBaseUrl,
+  syncCuratedReferences,
+} from "@/lib/references-api";
 
 type Convite = {
   id: string;
@@ -49,7 +66,7 @@ type ActiveUser = {
 
 export default function AdminPage() {
   const { user, profile, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState<"convites" | "usuarios">("convites");
+  const [activeTab, setActiveTab] = useState<"convites" | "usuarios" | "referencias">("convites");
 
   // Form states
   const [email, setEmail] = useState("");
@@ -58,6 +75,20 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [successInvite, setSuccessInvite] = useState<Convite | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // References state
+  const [references, setReferences] = useState<CampaignReference[]>([]);
+  const [loadingReferences, setLoadingReferences] = useState(false);
+  const [newRefTitle, setNewRefTitle] = useState("");
+  const [newRefCategory, setNewRefCategory] = useState("Verão & Praia");
+  const [newRefRecipe, setNewRefRecipe] = useState("");
+  const [newRefFile, setNewRefFile] = useState<File | null>(null);
+  const [newRefPreview, setNewRefPreview] = useState<string | null>(null);
+  const [newRefUrl, setNewRefUrl] = useState("");
+  const [submittingRef, setSubmittingRef] = useState(false);
+  const [refMsg, setRefMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [deletingRefId, setDeletingRefId] = useState<number | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("todas");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successActionMsg, setSuccessActionMsg] = useState<string | null>(null);
 
@@ -83,7 +114,7 @@ export default function AdminPage() {
   const fetchActiveUsers = async () => {
     setLoadingUsers(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const { getAuthHeaders } = await import("@/lib/opportunities-api");
       const authHeaders = await getAuthHeaders();
 
@@ -114,6 +145,116 @@ export default function AdminPage() {
       console.error("Erro ao buscar usuários ativos:", err);
     } finally {
       setLoadingUsers(false);
+    }
+  };
+
+  const loadReferences = async () => {
+    setLoadingReferences(true);
+    try {
+      const data = await fetchReferences(true);
+      setReferences(data);
+    } catch (err: any) {
+      console.error("Erro ao buscar referências de estilos:", err);
+    } finally {
+      setLoadingReferences(false);
+    }
+  };
+
+  const handleRefFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewRefFile(file);
+      const reader = new FileReader();
+      reader.onload = () => setNewRefPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setNewRefFile(null);
+      setNewRefPreview(null);
+    }
+  };
+
+  const handleCreateReference = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRefTitle.trim() || (!newRefFile && !newRefUrl.trim())) {
+      setRefMsg({ type: "error", text: "Informe um título e selecione uma imagem ou informe uma URL." });
+      return;
+    }
+
+    setSubmittingRef(true);
+    setRefMsg(null);
+
+    try {
+      const fd = new FormData();
+      fd.append("title", newRefTitle.trim());
+      if (newRefCategory) fd.append("category", newRefCategory);
+      if (newRefRecipe.trim()) fd.append("prompt_recipe", newRefRecipe.trim());
+      if (newRefFile) {
+        fd.append("file", newRefFile);
+      } else if (newRefUrl.trim()) {
+        fd.append("image_url", newRefUrl.trim());
+      }
+
+      const created = await createReference(fd);
+      setReferences((prev) => [created, ...prev]);
+      setNewRefTitle("");
+      setNewRefRecipe("");
+      setNewRefFile(null);
+      setNewRefPreview(null);
+      setNewRefUrl("");
+      setRefMsg({ type: "success", text: `Referência '${created.title}' adicionada com sucesso ao catálogo!` });
+    } catch (err: any) {
+      console.error("Erro ao criar referência:", err);
+      setRefMsg({ type: "error", text: err.message || "Erro ao fazer upload da referência." });
+    } finally {
+      setSubmittingRef(false);
+    }
+  };
+
+  const handleToggleRefActive = async (ref: CampaignReference) => {
+    try {
+      const updated = await updateReference(ref.id, { is_active: !ref.is_active });
+      setReferences((prev) => prev.map((r) => (r.id === ref.id ? updated : r)));
+    } catch (err: any) {
+      console.error("Erro ao alternar status da referência:", err);
+      alert("Erro ao alterar status: " + err.message);
+    }
+  };
+
+  const [syncingCurated, setSyncingCurated] = useState(false);
+
+  const handleDeleteRef = async (ref: CampaignReference) => {
+    if (!confirm(`Deseja realmente excluir a referência '${ref.title}' do catálogo?`)) return;
+    setDeletingRefId(ref.id);
+    try {
+      await deleteReference(ref.id);
+      setReferences((prev) => prev.filter((r) => r.id !== ref.id));
+      setRefMsg({ type: "success", text: `Referência '${ref.title}' removida com sucesso.` });
+    } catch (err: any) {
+      console.error("Erro ao excluir referência:", err);
+      alert("Erro ao excluir: " + err.message);
+    } finally {
+      setDeletingRefId(null);
+    }
+  };
+
+  const handleSyncCuratedReferences = async () => {
+    setSyncingCurated(true);
+    setRefMsg(null);
+    try {
+      const res = await syncCuratedReferences();
+      await loadReferences();
+      setRefMsg({
+        type: "success",
+        text: `${res.message} (${res.details?.novos_criados || 0} novos criados, ${res.details?.atualizados || 0} atualizados). Total: ${res.details?.total_ativos_no_banco || 0} referências ativas.`,
+      });
+    } catch (err: any) {
+      console.error("Erro ao sincronizar catálogo curado:", err);
+      setRefMsg({
+        type: "error",
+        text: err.message || "Erro ao sincronizar catálogo de referências.",
+      });
+    } finally {
+      setSyncingCurated(false);
     }
   };
 
@@ -191,7 +332,14 @@ export default function AdminPage() {
 
     syncWithSupabase();
     fetchActiveUsers();
+    loadReferences();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "referencias") {
+      loadReferences();
+    }
+  }, [activeTab]);
 
   const saveConvites = (items: Convite[]) => {
     setConvites(items);
@@ -239,7 +387,7 @@ export default function AdminPage() {
 
       // 2. Dispara e-mail de convite via Backend API (FastAPI)
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+        const apiBase = getApiBaseUrl();
         const { getAuthHeaders } = await import("@/lib/opportunities-api");
         const authHeaders = await getAuthHeaders();
 
@@ -308,7 +456,7 @@ export default function AdminPage() {
     setErrorMsg(null);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiBase = getApiBaseUrl();
       const { getAuthHeaders } = await import("@/lib/opportunities-api");
       const authHeaders = await getAuthHeaders();
 
@@ -449,6 +597,16 @@ export default function AdminPage() {
               }`}
             >
               <Users size={15} /> Usuários Ativos ({activeUsers.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("referencias")}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                activeTab === "referencias"
+                  ? "bg-gradient-brand text-white shadow-card"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sparkles size={15} /> Biblioteca de Estilos ({references.length})
             </button>
           </div>
         </div>
@@ -679,7 +837,7 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === "usuarios" ? (
           /* ABA: USUÁRIOS ATIVOS */
           <div className="mt-8 space-y-6">
             <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card">
@@ -753,6 +911,343 @@ export default function AdminPage() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ABA: BIBLIOTECA DE ESTILOS */
+          <div className="mt-8 space-y-8 animate-fade-in">
+            {/* Mensagem de Feedback da Aba */}
+            {refMsg && (
+              <div
+                className={`p-4 rounded-2xl border text-xs font-semibold flex items-center justify-between gap-2 animate-float-up ${
+                  refMsg.type === "success"
+                    ? "bg-success/10 border-success/30 text-success"
+                    : "bg-red-500/10 border-red-500/30 text-red-500"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {refMsg.type === "success" ? <Check size={16} /> : <AlertTriangle size={16} />}
+                  <span>{refMsg.text}</span>
+                </div>
+                <button onClick={() => setRefMsg(null)} className="hover:opacity-75">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+              {/* Formulário de Adicionar Nova Referência (col-span-5) */}
+              <div className="lg:col-span-5">
+                <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card sticky top-6">
+                  <div className="flex items-center gap-3 pb-4 border-b border-border/40">
+                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-brand text-white shadow-sm">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold">Nova Referência de Estilo</h2>
+                      <p className="text-xs text-muted-foreground">Adicione cartazes e artes para guiar a IA</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleCreateReference} className="mt-6 space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+                        Título do Estilo *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ex: Verão Tropical & Refrescância"
+                        value={newRefTitle}
+                        onChange={(e) => setNewRefTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-border bg-background/50 text-sm font-medium focus:border-primary focus:outline-none transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+                        Categoria
+                      </label>
+                      <select
+                        value={newRefCategory}
+                        onChange={(e) => setNewRefCategory(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl border border-border bg-background/50 text-sm font-medium focus:border-primary focus:outline-none transition"
+                      >
+                        <option value="Verão & Praia">Verão & Praia</option>
+                        <option value="Sertanejo & Rodeio">Sertanejo & Rodeio</option>
+                        <option value="Festas & Eventos">Festas & Eventos (Carnaval/São João)</option>
+                        <option value="Gourmet & Mel">Gourmet & Mel</option>
+                        <option value="Sofisticado & Clean">Sofisticado & Clean</option>
+                        <option value="Rústico & Tradicional">Rústico & Tradicional</option>
+                        <option value="Coquetelaria & Botânico">Coquetelaria & Botânico</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+                        Diretriz Visual / Receita de Prompt
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="Ex: Iluminação solar dourada, garrafa suada, fatias de limão e gelo ao redor, estética vibrante de praia."
+                        value={newRefRecipe}
+                        onChange={(e) => setNewRefRecipe(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-border bg-background/50 text-xs font-medium focus:border-primary focus:outline-none transition resize-none"
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Orientará o Gemini e o gerador de imagem na composição das cores, iluminação e cenário.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+                        Imagem da Campanha / Cartaz *
+                      </label>
+                      
+                      {/* Dropzone / File Picker */}
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-border/80 hover:border-primary/60 rounded-2xl p-4 cursor-pointer bg-background/30 transition group">
+                        {newRefPreview ? (
+                          <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-border">
+                            <img src={newRefPreview} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs font-bold text-white">
+                              Trocar imagem
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center py-3 text-center space-y-1">
+                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary mb-1">
+                              <Upload size={18} />
+                            </div>
+                            <span className="text-xs font-bold text-foreground">Clique para selecionar imagem</span>
+                            <span className="text-[11px] text-muted-foreground">PNG, JPG ou WEBP (salvo no Supabase Storage)</span>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleRefFileChange}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {/* Ou via URL */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground shrink-0">ou via URL:</span>
+                        <input
+                          type="url"
+                          placeholder="https://exemplo.com/imagem.jpg"
+                          value={newRefUrl}
+                          onChange={(e) => setNewRefUrl(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg border border-border bg-background/50 text-xs font-medium focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submittingRef}
+                      className="w-full mt-2 group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-3 text-sm font-bold text-white shadow-card transition hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70"
+                    >
+                      {submittingRef ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" /> Enviando ao Supabase...
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={16} /> Salvar Referência no Catálogo
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Grid da Galeria de Referências (col-span-7) */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* Métricas Rápidas */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="rounded-2xl border border-border/60 bg-card p-4 text-center">
+                    <div className="text-2xl font-extrabold text-brand">{references.length}</div>
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mt-1">Total no Catálogo</div>
+                  </div>
+                  <div className="rounded-2xl border border-border/60 bg-card p-4 text-center">
+                    <div className="text-2xl font-extrabold text-success">
+                      {references.filter((r) => r.is_active).length}
+                    </div>
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mt-1">Estilos Ativos</div>
+                  </div>
+                  <div className="rounded-2xl border border-border/60 bg-card p-4 text-center">
+                    <div className="text-2xl font-extrabold text-amber-500">
+                      {new Set(references.map((r) => r.category).filter(Boolean)).size}
+                    </div>
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mt-1">Categorias</div>
+                  </div>
+                </div>
+
+                {/* Filtro e Título */}
+                <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card space-y-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-border/40">
+                    <div className="flex items-center gap-2 font-bold text-base">
+                      <Palette size={18} className="text-brand" /> Estilos Comerciais Disponíveis
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleSyncCuratedReferences}
+                        disabled={syncingCurated || loadingReferences}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/40 bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/20 transition disabled:opacity-50"
+                        title="Baixar e sincronizar estilos comerciais curados automaticamente"
+                      >
+                        <Sparkles size={13} className={syncingCurated ? "animate-spin" : ""} />
+                        {syncingCurated ? "Sincronizando..." : "Sincronizar Catálogo Curado"}
+                      </button>
+                      <button
+                        onClick={loadReferences}
+                        disabled={loadingReferences}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-card transition"
+                      >
+                        <RefreshCw size={13} className={loadingReferences ? "animate-spin" : ""} /> Atualizar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Filtro de Categorias */}
+                  {references.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                      {["todas", ...Array.from(new Set(references.map((r) => r.category).filter(Boolean))) as string[]].map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setCategoryFilter(cat)}
+                          className={`text-xs font-semibold px-3 py-1 rounded-xl transition ${
+                            categoryFilter.toLowerCase() === cat.toLowerCase()
+                              ? "bg-primary text-white shadow-sm"
+                              : "bg-background/40 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50"
+                          }`}
+                        >
+                          {cat === "todas" ? "Todas as Categorias" : cat}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Grid de Cards de Referência */}
+                  {loadingReferences ? (
+                    <div className="py-16 flex flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground">
+                      <Loader2 size={28} className="animate-spin text-primary" />
+                      <span>Carregando biblioteca do Supabase Storage...</span>
+                    </div>
+                  ) : references.length === 0 ? (
+                    <div className="p-12 rounded-2xl border border-dashed border-border/60 text-center text-xs text-muted-foreground space-y-2">
+                      <ImageIcon size={32} className="mx-auto text-muted-foreground/50" />
+                      <p>Nenhuma referência cadastrada ainda.</p>
+                      <p className="text-[11px]">Adicione um cartaz ou estilo de campanha no formulário ao lado.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {references
+                        .filter((r) => categoryFilter === "todas" || r.category?.toLowerCase() === categoryFilter.toLowerCase())
+                        .map((ref) => (
+                        <div
+                          key={ref.id}
+                          className={`group rounded-2xl border transition-all overflow-hidden flex flex-col ${
+                            ref.is_active
+                              ? "border-border/60 bg-background/40 hover:border-primary/50 hover:shadow-card"
+                              : "border-border/30 bg-background/20 opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          {/* Imagem com Overlay */}
+                          <div className="relative aspect-[4/3] w-full bg-black/40 overflow-hidden">
+                            <img
+                              src={ref.image_url}
+                              alt={ref.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                              loading="lazy"
+                            />
+                            {/* Badges superiores */}
+                            <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1 pointer-events-none">
+                              {ref.category && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/70 backdrop-blur-md text-white border border-white/10">
+                                  {ref.category}
+                                </span>
+                              )}
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border backdrop-blur-md ${
+                                  ref.is_active
+                                    ? "bg-success/80 text-white border-success/30"
+                                    : "bg-gray-700/80 text-gray-200 border-gray-600/30"
+                                }`}
+                              >
+                                {ref.is_active ? "Ativo" : "Inativo"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Conteúdo do Card */}
+                          <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                              <h3 className="font-bold text-sm text-foreground leading-snug line-clamp-1">
+                                {ref.title}
+                              </h3>
+                              {ref.prompt_recipe && (
+                                <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                                  {ref.prompt_recipe}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Barra de Ações */}
+                            <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-1 text-xs">
+                              {/* Toggle Ativo/Inativo */}
+                              <button
+                                onClick={() => handleToggleRefActive(ref)}
+                                title={ref.is_active ? "Desativar estilo" : "Ativar estilo"}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border text-[11px] font-medium hover:bg-card transition"
+                              >
+                                {ref.is_active ? (
+                                  <>
+                                    <ToggleRight size={14} className="text-success" />
+                                    <span>Pausar</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ToggleLeft size={14} className="text-muted-foreground" />
+                                    <span>Ativar</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <div className="flex items-center gap-1">
+                                <a
+                                  href={ref.image_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Ver imagem completa"
+                                  className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-card transition"
+                                >
+                                  <ExternalLink size={13} />
+                                </a>
+
+                                <button
+                                  onClick={() => handleDeleteRef(ref)}
+                                  disabled={deletingRefId === ref.id}
+                                  title="Excluir estilo"
+                                  className="p-1.5 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 transition disabled:opacity-50"
+                                >
+                                  {deletingRefId === ref.id ? (
+                                    <Loader2 size={13} className="animate-spin" />
+                                  ) : (
+                                    <Trash2 size={13} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

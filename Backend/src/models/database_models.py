@@ -1,7 +1,7 @@
 from typing import Optional
-from datetime import date as dt
+from datetime import date as dt, datetime
 
-from sqlalchemy import Date, BigInteger, Numeric, String
+from sqlalchemy import Date, DateTime, BigInteger, Numeric, String, Text, Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -38,8 +38,25 @@ class Campaign(Base):
     opportunity: Mapped[str]
     id_PostInstagram: Mapped[Optional[str]] = mapped_column("id_PostInstagram", String(64), unique=True, nullable=True)
 
+    status: Mapped[Optional[str]] = mapped_column(String(32), default="PUBLISHED", nullable=True)
+    scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    publish_mode: Mapped[Optional[str]] = mapped_column(String(32), default="AUTONOMOUS", nullable=True)
+    error_log: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     original_image_url: Mapped[Optional[str]]
     fidelity_score: Mapped[Optional[float]] = mapped_column(Numeric(3, 2), nullable=True)
     approved: Mapped[bool] = mapped_column(default=False)
     generation_attempts: Mapped[Optional[list]] = mapped_column(JSONB, default=list)
+
+
+# modelo da tabela de referências de campanhas
+class CampaignReference(Base):
+
+    __tablename__ = "campaign_references"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(255))
+    image_url: Mapped[str] = mapped_column(String(1024))
+    category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    prompt_recipe: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { TopBar } from "@/components/ace/TopBar";
-import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Camera, Loader2, MessageCircle, Shield, Users, Zap } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/references-api";
+import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Camera, Clock, CheckCircle2, Loader2, MessageCircle, Shield, Users, Zap } from "lucide-react";
 
 function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -37,49 +38,48 @@ export default function AprovarPage() {
       try { setHoliday(JSON.parse(storedHoliday)); } catch { /* ... */ }
     }
 
-    const storedImg = sessionStorage.getItem("ace.uploadedImage");
-    if (storedImg) setUploaded(storedImg);
+    const img = sessionStorage.getItem("ace.generatedImage");
+    const upl = sessionStorage.getItem("ace.uploaded");
+    const copy = sessionStorage.getItem("ace.generatedCopy");
+    const orig = sessionStorage.getItem("ace.originalImageUrl");
+    const score = sessionStorage.getItem("ace.fidelityScore");
+    const apprv = sessionStorage.getItem("ace.approved");
 
-    const storedGenImg = sessionStorage.getItem("ace.generatedImage");
-    if (storedGenImg) setGeneratedImage(storedGenImg);
-
-    const storedGenCopy = sessionStorage.getItem("ace.generatedCopy");
-    if (storedGenCopy) setGeneratedCopy(storedGenCopy);
-
-    const storedOriginalUrl = sessionStorage.getItem("ace.originalImageUrl");
-    if (storedOriginalUrl) setOriginalImageUrl(storedOriginalUrl);
-
-    const storedFidelityScore = sessionStorage.getItem("ace.fidelityScore");
-    if (storedFidelityScore) setFidelityScore(Number(storedFidelityScore));
-
-    const storedApproved = sessionStorage.getItem("ace.approved");
-    if (storedApproved) setApproved(storedApproved === "true");
+    if (img) setGeneratedImage(img);
+    if (upl) setUploaded(upl);
+    if (copy) setGeneratedCopy(copy);
+    if (orig) setOriginalImageUrl(orig);
+    if (score) setFidelityScore(parseFloat(score));
+    if (apprv) setApproved(apprv === "true");
   }, []);
 
   const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [scheduleTime, setScheduleTime] = useState("");
 
   useEffect(() => {
     try {
-      if (holiday?.data) {
-        let dateObj: Date;
-        if (holiday.data.includes("-")) {
-          const [y, m, d] = holiday.data.split("-").map(Number);
-          dateObj = new Date(y, (m || 1) - 1, d || 1);
-        } else {
-          const [d, m, y] = holiday.data.split("/").map(Number);
-          dateObj = new Date(y, (m || 1) - 1, d || 1);
-        }
-        dateObj.setDate(dateObj.getDate() - 2);
-        const yyyy = dateObj.getFullYear();
-        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
-        const dd = String(dateObj.getDate()).padStart(2, "0");
-        setScheduleDate(`${yyyy}-${mm}-${dd}`);
-      }
+      // Extrai data e hora atual no fuso oficial de Brasília (America/Sao_Paulo / UTC-3)
+      const nowStr = new Date().toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" });
+      const [currDate, currTime] = nowStr.split(" ");
+      setScheduleDate(currDate);
+      setScheduleTime(currTime ? currTime.slice(0, 5) : "09:00");
     } catch {
-      setScheduleDate("2026-04-19");
+      const now = new Date();
+      setScheduleDate(now.toISOString().split("T")[0]);
+      setScheduleTime("09:00");
     }
-  }, [holiday]);
+  }, []);
+
+  const isScheduledFuture = useMemo(() => {
+    if (!scheduleDate || !scheduleTime) return false;
+    try {
+      const targetIso = `${scheduleDate}T${scheduleTime}:00-03:00`;
+      const targetTime = new Date(targetIso).getTime();
+      return targetTime > Date.now();
+    } catch {
+      return false;
+    }
+  }, [scheduleDate, scheduleTime]);
 
   const activate = async () => {
     const base64Image = generatedImage || uploaded;
@@ -105,10 +105,10 @@ export default function AprovarPage() {
     const caption = generatedCopy;
     let imageUrl = "";
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const API_BASE = getApiBaseUrl();
 
     try {
-      const { getAuthHeaders } = await import("@/lib/opportunities-api");
+      const { getAuthHeaders, scheduleCampaign, saveCampaign } = await import("@/lib/opportunities-api");
       const authHeaders = await getAuthHeaders();
 
       if (base64Image.startsWith("http")) {
@@ -133,6 +133,30 @@ export default function AprovarPage() {
         }
       }
 
+      const oppId = typeof holiday.id === "number" ? holiday.id : (holiday.rawId ? Number(holiday.rawId) : 1);
+
+      // Se a data/hora for futura, envia para a rota de agendamento
+      if (isScheduledFuture) {
+        const targetIso = `${scheduleDate}T${scheduleTime}:00-03:00`;
+        const scheduledUtcIso = new Date(targetIso).toISOString();
+
+        await scheduleCampaign({
+          title: holiday.id === "dia-a-dia" ? "Publicação do Dia a Dia" : (holiday.nome ? `Campanha ${holiday.nome}` : "Campanha Instagram"),
+          caption,
+          imageUrl,
+          scheduled_at: scheduledUtcIso,
+          publish_mode: autonomous ? "AUTONOMOUS" : "MANUAL",
+          opportunity: String(oppId),
+          original_image_url: originalImageUrl || undefined,
+          fidelity_score: fidelityScore !== null && !isNaN(fidelityScore!) ? fidelityScore : undefined,
+        });
+
+        console.log("Campanha agendada com sucesso no horário de Brasília!");
+        router.push(`/sucesso?agendado=true&modo=${autonomous ? "autorizado" : "manual"}`);
+        return;
+      }
+
+      // Publicação Imediata
       const response = await fetch(`${API_BASE}/api/instagram/postar`, {
         method: "POST",
         headers: authHeaders,
@@ -145,13 +169,11 @@ export default function AprovarPage() {
       if (response.ok) {
         const postData = await response.json().catch(() => ({}));
         const rawPostId = postData.post_id ? String(postData.post_id) : undefined;
-        const oppId = typeof holiday.id === "number" ? holiday.id : (holiday.rawId ? Number(holiday.rawId) : 1);
 
         // Salvar a campanha no Supabase
         try {
-          const { saveCampaign } = await import("@/lib/opportunities-api");
           await saveCampaign({
-            title: holiday.nome ? `Campanha ${holiday.nome}` : "Campanha Instagram",
+            title: holiday.id === "dia-a-dia" ? "Publicação do Dia a Dia" : (holiday.nome ? `Campanha ${holiday.nome}` : "Campanha Instagram"),
             campaign: caption,
             description: `Imagem Cloudinary: ${imageUrl}`,
             date: scheduleDate || new Date().toISOString().split("T")[0],
@@ -214,7 +236,11 @@ export default function AprovarPage() {
           <div className="rounded-3xl border border-border/60 bg-card p-6 lg:col-span-3 shadow-card">
             <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Resumo da campanha</div>
             <div className="mt-4 space-y-3">
-              <SummaryRow icon={<Calendar size={16} />} label="Data Comemorativa" value={`${holiday.nome || "Oportunidade"} — ${holiday.data || ""}`} />
+              <SummaryRow 
+                icon={<Calendar size={16} />} 
+                label={holiday.id === "dia-a-dia" ? "Tipo de Conteúdo" : "Data Comemorativa"} 
+                value={holiday.id === "dia-a-dia" ? "Publicação do Dia a Dia (Feed Casual)" : `${holiday.nome || "Oportunidade"} — ${holiday.data || ""}`} 
+              />
               <SummaryRow icon={<Camera size={16} />} label="Canal de Publicação" value="Instagram — Post no Feed" />
               <SummaryRow icon={<MessageCircle size={16} />} label="Legenda da Campanha" value={generatedCopy ? "Legenda personalizada com IA" : "Aguardando geração"} />
             </div>
@@ -239,26 +265,43 @@ export default function AprovarPage() {
                 </div>
 
                 <div className="mt-5 rounded-2xl border border-border/60 bg-background/40 p-4">
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
-                    {autonomous ? "Agendado para" : "Publicar manualmente em"}
+                  <div className="flex items-center justify-between">
+                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                      {autonomous ? "Agendado para" : "Publicar manualmente em"}
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      <Clock size={10} /> Brasília (UTC-3)
+                    </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-3">
+                  <div className="mt-2.5 flex items-center gap-3">
                     <input 
                       type="date" 
                       min="2024-01-01"
                       max="2035-12-31"
                       value={scheduleDate}
                       onChange={(e) => setScheduleDate(e.target.value)}
-                      className="rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" 
+                      className="rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
                     />
-                    <span className="text-muted-foreground">às</span>
+                    <span className="text-muted-foreground text-xs">às</span>
                     <input 
                       type="time" 
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
-                      className="w-24 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" 
+                      className="w-24 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
                     />
                   </div>
+
+                  {isScheduledFuture ? (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 animate-float-up">
+                      <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                      <span>Disparo programado para <strong>{scheduleDate.split("-").reverse().join("/")}</strong> às <strong>{scheduleTime}</strong> (Horário de Brasília)</span>
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+                      <Zap size={14} className="text-brand shrink-0" />
+                      <span>Data/horário atual ou passado: a publicação será <strong>imediata</strong> ao confirmar.</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -269,7 +312,13 @@ export default function AprovarPage() {
                 disabled={loading || (!generatedImage && !uploaded) || !generatedCopy} 
                 className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-4 text-sm font-bold text-white shadow-card transition hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? <><Loader2 size={16} className="animate-spin" /> Ativando...</> : <><Zap size={16} /> Publicar Campanha <ArrowRight size={16} className="transition group-hover:translate-x-0.5" /></>}
+                {loading ? (
+                  <><Loader2 size={16} className="animate-spin" /> {isScheduledFuture ? "Agendando..." : "Ativando..."}</>
+                ) : isScheduledFuture ? (
+                  <><Clock size={16} /> {autonomous ? "Agendar Publicação Automática" : "Agendar Notificação Manual"} <ArrowRight size={16} className="transition group-hover:translate-x-0.5" /></>
+                ) : (
+                  <><Zap size={16} /> Publicar Campanha Agora <ArrowRight size={16} className="transition group-hover:translate-x-0.5" /></>
+                )}
               </button>
               <Link href="/gerador" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-5 py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground">
                 <ArrowLeft size={14} /> Editar campanha
