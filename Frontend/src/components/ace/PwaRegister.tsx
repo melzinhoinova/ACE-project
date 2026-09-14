@@ -10,7 +10,7 @@ export function PwaRegister() {
   useEffect(() => {
     // 1. Registra o Service Worker
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
+      const registerSw = () => {
         navigator.serviceWorker
           .register("/sw.js")
           .then((reg) => {
@@ -19,7 +19,13 @@ export function PwaRegister() {
           .catch((err) => {
             console.warn("[PWA] Falha ao registrar Service Worker:", err);
           });
-      });
+      };
+
+      if (document.readyState === "complete") {
+        registerSw();
+      } else {
+        window.addEventListener("load", registerSw);
+      }
     }
 
     // 2. Escuta o evento beforeinstallprompt para instalação do WebApp

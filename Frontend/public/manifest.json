@@ -3,12 +3,13 @@
   "short_name": "ACE",
   "description": "Plataforma autônoma de criação de campanhas e inteligência estratégica de marketing para marcas.",
   "start_url": "/radar",
-  "id": "/",
+  "id": "/radar",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#09090b",
   "theme_color": "#f97316",
+  "prefer_related_applications": false,
   "categories": ["business", "marketing", "productivity"],
   "icons": [
     {

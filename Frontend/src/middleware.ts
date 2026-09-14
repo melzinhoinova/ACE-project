@@ -30,9 +30,23 @@ function isValidJwt(token: string): boolean {
 }
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // 0. Permite arquivos públicos estáticos essenciais do PWA sem redirecionamento
+  if (
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js' ||
+    pathname.startsWith('/icons/') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.json')
+  ) {
+    return NextResponse.next()
+  }
+
   const token = request.cookies.get('sb-access-token')?.value
   const hasValidToken = Boolean(token && isValidJwt(token))
-  const { pathname } = request.nextUrl
 
   // 1. Redireciona rotas descontinuadas
   if (pathname === '/cadastro' || pathname === '/feed') {
@@ -62,6 +76,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|js)$).*)',
   ],
 }
