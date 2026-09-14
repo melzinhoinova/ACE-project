@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AceLogo } from "./AceLogo";
-import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings, ShieldCheck, Sparkles } from "lucide-react";
+import { Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/app/auth-context";
 import { useGeneration } from "@/app/generation-context";
@@ -173,11 +173,6 @@ export function TopBar({ children }: AppShellProps) {
             <AceLogo size="sm" />
           </Link>
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <button className="relative grid h-10 w-10 place-items-center rounded-full border border-border/80 text-muted-foreground hover:text-foreground">
-              <Bell size={16} />
-              <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-gradient-brand" />
-            </button>
-
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
