@@ -13,7 +13,7 @@ repository: ReferenceRepository = ReferenceRepository()
 
 
 @router.get("/api/referencias", response_model=list[CampaignReferenceResponse])
-async def list_references(
+def list_references(
     all: bool = False,
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -26,7 +26,7 @@ async def list_references(
 
 
 @router.get("/api/referencias/{ref_id}", response_model=CampaignReferenceResponse)
-async def get_reference_by_id(
+def get_reference_by_id(
     ref_id: int,
     db: Session = Depends(get_db),
     current_user: AuthenticatedUser = Depends(get_current_user),
@@ -79,7 +79,7 @@ async def create_reference(
 
 
 @router.patch("/api/referencias/{ref_id}", response_model=CampaignReferenceResponse)
-async def update_reference(
+def update_reference(
     ref_id: int,
     update_data: CampaignReferenceUpdate,
     db: Session = Depends(get_db),
@@ -95,7 +95,7 @@ async def update_reference(
 
 
 @router.delete("/api/referencias/{ref_id}")
-async def delete_reference(
+def delete_reference(
     ref_id: int,
     db: Session = Depends(get_db),
     admin_user: AuthenticatedUser = Depends(require_admin),
@@ -122,7 +122,7 @@ async def delete_reference(
 
 
 @router.post("/api/admin/sync-references")
-async def sync_references(
+def sync_references(
     admin_user: AuthenticatedUser = Depends(require_admin),
 ):
     """

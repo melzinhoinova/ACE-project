@@ -166,6 +166,15 @@ export default function GeradorPage() {
     holiday?.nome?.toLowerCase() === "campanha promocional" || 
     holiday?.nome?.toLowerCase() === "geral";
 
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const abortControllerRef = useRef<AbortController | null>(null);
   const [cancelNotice, setCancelNotice] = useState(false);
 
@@ -243,8 +252,6 @@ export default function GeradorPage() {
       }
 
       const data = await res.json();
-      setGenerated(data.imagem_instagram);
-      setGeneratedCopy(data.legenda_instagram);
       
       sessionStorage.setItem("ace.generatedImage", data.imagem_instagram || "");
       sessionStorage.setItem("ace.generatedCopy", data.legenda_instagram || "");
@@ -252,19 +259,29 @@ export default function GeradorPage() {
       sessionStorage.setItem("ace.fidelityScore", data.fidelity_score !== null && data.fidelity_score !== undefined ? String(data.fidelity_score) : "");
       sessionStorage.setItem("ace.approved", data.approved !== null && data.approved !== undefined ? String(data.approved) : "");
       
-      setStage("ready");
+      if (isMountedRef.current) {
+        setGenerated(data.imagem_instagram);
+        setGeneratedCopy(data.legenda_instagram);
+        setStage("ready");
+      }
     } catch (err: any) {
       if (err.name === "AbortError") {
         console.log("Geração abortada com sucesso pelo usuário.");
-        setCancelNotice(true);
-        setTimeout(() => setCancelNotice(false), 5000);
-        setStage(generated ? "ready" : "idle");
-        setRegenerating(false);
+        if (isMountedRef.current) {
+          setCancelNotice(true);
+          setTimeout(() => {
+            if (isMountedRef.current) setCancelNotice(false);
+          }, 5000);
+          setStage(generated ? "ready" : "idle");
+          setRegenerating(false);
+        }
         return;
       }
       console.error("Erro ao gerar campanha:", err);
-      alert(`Erro ao gerar campanha:\n${err.message || "Verifique o terminal do backend."}`);
-      setStage("idle");
+      if (isMountedRef.current) {
+        alert(`Erro ao gerar campanha:\n${err.message || "Verifique o terminal do backend."}`);
+        setStage("idle");
+      }
     } finally {
       abortControllerRef.current = null;
     }

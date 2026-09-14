@@ -210,21 +210,31 @@ export default function DashboardSucessoPage() {
         const { getAuthHeaders } = await import("@/lib/opportunities-api");
         const authHeaders = await getAuthHeaders();
 
-        // 1. Carrega dados gerais da conta
-        const resGeral = await fetch(`${API_BASE}/api/instagram/dashboard/geral`, {
-          cache: "no-store",
-          headers: { ...authHeaders, 'Cache-Control': 'no-cache' }
-        });
-        if (resGeral.ok) setDadosGeral(await resGeral.json());
+        setLoadingScheduled(true);
 
-        // 2. Carrega lista de campanhas salvas
-        const dbCampaigns = await fetchCampaigns().catch(() => []);
+        // Dispara todas as requisições em paralelo para carregar o dashboard instantaneamente
+        const [resGeralResult, dbCampaignsResult, scheduledResult] = await Promise.allSettled([
+          fetch(`${API_BASE}/api/instagram/dashboard/geral`, {
+            cache: "no-store",
+            headers: { ...authHeaders, 'Cache-Control': 'no-cache' }
+          }).then(async (res) => (res.ok ? await res.json() : null)),
+          fetchCampaigns().catch(() => []),
+          fetchScheduledCampaigns().catch(() => []),
+        ]);
+
+        if (resGeralResult.status === "fulfilled" && resGeralResult.value) {
+          setDadosGeral(resGeralResult.value);
+        }
+
+        const dbCampaigns = (dbCampaignsResult.status === "fulfilled" && dbCampaignsResult.value) ? dbCampaignsResult.value : [];
         setCampaignsHistory(dbCampaigns || []);
 
-        // 3. Carrega fila de agendamentos
-        carregarAgendados();
+        if (scheduledResult.status === "fulfilled" && scheduledResult.value) {
+          setScheduledList(scheduledResult.value);
+        }
+        setLoadingScheduled(false);
 
-        // 4. Seleção Padrão (Auto-seleciona a campanha mais recente gravada)
+        // Seleção Padrão (Auto-seleciona a campanha mais recente gravada)
         if (dbCampaigns && dbCampaigns.length > 0) {
           const firstWithMedia = dbCampaigns.find((c) => c.id_PostInstagram) || dbCampaigns[0];
           setSelectedCampaignId(firstWithMedia.id);
@@ -238,6 +248,7 @@ export default function DashboardSucessoPage() {
         }
       } catch (err) {
         console.error("Erro ao buscar dados do dashboard do Meta", err);
+        setLoadingScheduled(false);
         fetchRecentPost();
       }
     }

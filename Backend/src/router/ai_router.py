@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, UploadFile, File, Depends
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from src.dependencies.api_dependency import get_current_user, get_db, AuthenticatedUser
 from src.services.gemini_service import generate_campaign_copy, CampanhaInput
@@ -21,6 +22,57 @@ router = APIRouter()
 MAX_TENTATIVAS = 2  # comece com 2 pra controlar custo; suba se precisar
 SCORE_MINIMO_APROVACAO = 0.8
 QUALITY_TESTES = "medium"  # Modo preferido: estética mais natural, orgânica e sem aspecto artificial
+
+
+def _executar_pipeline_geracao(
+    dados: CampanhaInput,
+    imagem_bytes: bytes,
+    texto_promocional: str | None,
+    final_evento: str | None,
+) -> dict:
+    identificador = uuid.uuid4().hex
+
+    # 0. Normaliza a entrada — extrai um produto único e bem enquadrado
+    imagem_original = crop_to_single_product(imagem_bytes)
+
+    # 1. Persiste a foto original ANTES de gerar
+    original_url = upload_original_product_image(imagem_original, identificador)
+
+    # 2. Copywriting + prompt de CENA comercial com estilo de referência
+    campanha = generate_campaign_copy(dados)
+    prompt_cena = campanha["sugestao_prompt_imagem"]
+    print(f"Prompt de cena gerado: {prompt_cena}")
+
+    # 3. Loop de geração com validação de fidelidade via gpt-image-2
+    melhor = {"url": None, "score": -1.0, "motivo": ""}
+
+    for tentativa in range(1, MAX_TENTATIVAS + 1):
+        imagem_gerada = openai_edit_response(
+            prompt_cena,
+            imagem_original,
+            quality=QUALITY_TESTES,
+            promo_text=texto_promocional,
+        )
+        score, motivo = score_image_fidelity(imagem_original, imagem_gerada)
+        url_tentativa = upload_generated_image(imagem_gerada, identificador, tentativa)
+
+        print(f"Tentativa {tentativa}: score={score:.2f} — {motivo}")
+
+        if score > melhor["score"]:
+            melhor = {"url": url_tentativa, "score": score, "motivo": motivo}
+
+        if score >= SCORE_MINIMO_APROVACAO:
+            break
+
+    return {
+        "titulo": campanha["titulo_campanha"],
+        "legenda_instagram": campanha["legenda_instagram"],
+        "imagem_instagram": melhor["url"],
+        "original_image_url": original_url,
+        "fidelity_score": melhor["score"],
+        "approved": melhor["score"] >= SCORE_MINIMO_APROVACAO,
+        "evento": final_evento,
+    }
 
 
 @router.post("/api/campanha", response_model=CampaignModel)
@@ -128,50 +180,13 @@ async def gerar_campanha(
             evento_descricao=evento_descricao,
         )
 
-        # Identificador único pra nomear os arquivos no Cloudinary.
-        identificador = uuid.uuid4().hex
-
-        # 0. Normaliza a entrada — extrai um produto único e bem enquadrado
-        imagem_original = crop_to_single_product(images_list[0])
-
-        # 1. Persiste a foto original ANTES de gerar
-        original_url = upload_original_product_image(imagem_original, identificador)
-
-        # 2. Copywriting + prompt de CENA comercial com estilo de referência
-        campanha = generate_campaign_copy(dados)
-        prompt_cena = campanha["sugestao_prompt_imagem"]
-        print(f"Prompt de cena gerado: {prompt_cena}")
-
-        # 3. Loop de geração com validação de fidelidade via gpt-image-2
-        melhor = {"url": None, "score": -1.0, "motivo": ""}
-
-        for tentativa in range(1, MAX_TENTATIVAS + 1):
-            imagem_gerada = openai_edit_response(
-                prompt_cena,
-                imagem_original,
-                quality=QUALITY_TESTES,
-                promo_text=texto_promocional,
-            )
-            score, motivo = score_image_fidelity(imagem_original, imagem_gerada)
-            url_tentativa = upload_generated_image(imagem_gerada, identificador, tentativa)
-
-            print(f"Tentativa {tentativa}: score={score:.2f} — {motivo}")
-
-            if score > melhor["score"]:
-                melhor = {"url": url_tentativa, "score": score, "motivo": motivo}
-
-            if score >= SCORE_MINIMO_APROVACAO:
-                break
-
-        return {
-            "titulo": campanha["titulo_campanha"],
-            "legenda_instagram": campanha["legenda_instagram"],
-            "imagem_instagram": melhor["url"],
-            "original_image_url": original_url,
-            "fidelity_score": melhor["score"],
-            "approved": melhor["score"] >= SCORE_MINIMO_APROVACAO,
-            "evento": final_evento,
-        }
+        return await run_in_threadpool(
+            _executar_pipeline_geracao,
+            dados,
+            images_list[0],
+            texto_promocional,
+            final_evento,
+        )
 
     except Exception as e:
         print(f"\n=== ERRO 500 em /api/campanha ===")
