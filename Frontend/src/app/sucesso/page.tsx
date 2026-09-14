@@ -83,22 +83,22 @@ function formatScheduledDateTime(isoStr?: string | null): string {
 
 function Metric({ icon, label, value, sub, delay, pulse, highlight }: any) {
   return (
-    <div className={`animate-float-up rounded-3xl p-[1.5px] ${highlight ? "bg-gradient-brand animate-gradient-shift" : "bg-border"}`} style={{ animationDelay: `${delay}ms` }}>
-      <div className="rounded-3xl bg-card p-6 h-full flex flex-col justify-between">
+    <div className={`animate-float-up rounded-2xl sm:rounded-3xl p-[1.5px] ${highlight ? "bg-gradient-brand animate-gradient-shift" : "bg-border"}`} style={{ animationDelay: `${delay}ms` }}>
+      <div className="rounded-2xl sm:rounded-3xl bg-card p-3.5 sm:p-6 h-full flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-brand-soft">{icon}</div>
+            <div className="grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-xl bg-gradient-brand-soft">{icon}</div>
             {pulse && (
-              <span className="relative flex h-2.5 w-2.5">
+              <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gradient-brand opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-gradient-brand" />
+                <span className="relative inline-flex h-2 sm:h-2.5 w-2 sm:w-2.5 rounded-full bg-gradient-brand" />
               </span>
             )}
           </div>
-          <div className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
-          <div className="mt-1 text-4xl font-extrabold tabular-nums text-foreground">{value}</div>
+          <div className="mt-3 sm:mt-4 text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest text-muted-foreground font-semibold line-clamp-1">{label}</div>
+          <div className="mt-1 text-xl sm:text-4xl font-extrabold tabular-nums text-foreground truncate">{value}</div>
         </div>
-        <div className="mt-2 text-xs text-muted-foreground border-t border-border/30 pt-2">{sub}</div>
+        <div className="mt-2 text-[10px] sm:text-xs text-muted-foreground border-t border-border/30 pt-2 line-clamp-1 sm:line-clamp-none">{sub}</div>
       </div>
     </div>
   );
@@ -291,7 +291,7 @@ export default function DashboardSucessoPage() {
 
   return (
     <TopBar>
-      <main className="mx-auto max-w-6xl px-6 py-10 space-y-10">
+      <main className="mx-auto max-w-6xl px-3.5 sm:px-6 py-5 sm:py-10 space-y-6 sm:space-y-10">
         
         {/* Top Navigation */}
         <div className="flex items-center justify-between">
@@ -306,13 +306,13 @@ export default function DashboardSucessoPage() {
 
         {/* Header Principal */}
         <div className="text-center space-y-3">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-brand animate-gradient-shift shadow-card">
-            <LucideRocket className="text-white" size={26} />
+          <div className="mx-auto grid h-14 w-14 sm:h-16 sm:w-16 place-items-center rounded-2xl bg-gradient-brand animate-gradient-shift shadow-card">
+            <LucideRocket className="text-white" size={24} />
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-5xl">
             Painel de <span className="text-gradient-brand">resultados</span>
           </h1>
-          <p className="mx-auto max-w-md text-sm text-muted-foreground">
+          <p className="mx-auto max-w-md text-xs sm:text-sm text-muted-foreground px-2">
             Monitoramento de performance e gestão de publicações
           </p>
 
@@ -332,17 +332,17 @@ export default function DashboardSucessoPage() {
         </div>
 
         {/* Seleção de Abas */}
-        <div className="flex justify-center">
-          <div className="inline-flex rounded-full bg-secondary/40 p-1 border border-border/60 backdrop-blur-md">
+        <div className="flex justify-center max-w-full overflow-x-auto scrollbar-none px-1 py-1">
+          <div className="inline-flex shrink-0 rounded-2xl sm:rounded-full bg-secondary/40 p-1 border border-border/60 backdrop-blur-md gap-1">
             <button 
               onClick={() => setAbaAtiva("geral")} 
-              className={`rounded-full px-6 py-2.5 text-xs font-bold transition-all duration-300 ${abaAtiva === "geral" ? "bg-card text-foreground shadow-md scale-105" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 text-xs font-bold transition-all duration-300 whitespace-nowrap ${abaAtiva === "geral" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
-              Visão Macro da Conta
+              Visão Macro
             </button>
             <button 
               onClick={() => setAbaAtiva("post")} 
-              className={`rounded-full px-6 py-2.5 text-xs font-bold transition-all duration-300 ${abaAtiva === "post" ? "bg-card text-foreground shadow-md scale-105" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 text-xs font-bold transition-all duration-300 whitespace-nowrap ${abaAtiva === "post" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
               Métricas do Post
             </button>
@@ -351,9 +351,9 @@ export default function DashboardSucessoPage() {
                 setAbaAtiva("agendados");
                 carregarAgendados();
               }} 
-              className={`rounded-full px-6 py-2.5 text-xs font-bold transition-all duration-300 flex items-center gap-2 ${abaAtiva === "agendados" ? "bg-card text-foreground shadow-md scale-105" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 text-xs font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${abaAtiva === "agendados" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
-              <span>Fila de Agendamentos</span>
+              <span>Fila de Agendados</span>
               {scheduledList.length > 0 && (
                 <span className="rounded-full bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-extrabold leading-none">
                   {scheduledList.length}
@@ -366,23 +366,23 @@ export default function DashboardSucessoPage() {
         {/* Bloco de Conteúdo */}
         <div className="transition-all duration-500">
           {abaAtiva === "geral" ? (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {/* GRID COM 4 CARDS MACRO */}
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <Metric icon={<Eye size={20} className="text-brand" />} label="Visualizações da Conta" value={totalImpressions.toLocaleString("pt-BR")} sub="Impressões de mídia acumuladas hoje" delay={0} />
-                <Metric icon={<BarChart3 size={20} className="text-brand" />} label="Alcance Geral" value={totalReachGeral.toLocaleString("pt-BR")} sub="Contas únicas alcançadas" delay={100} pulse />
-                <Metric icon={<UserCheck size={20} className="text-brand" />} label="Visitas ao Perfil" value={totalProfileViews.toLocaleString("pt-BR")} sub="Cliques para explorar seu @perfil" delay={200} />
-                <Metric icon={<Users size={20} className="text-white" />} label="Total de Seguidores" value={totalFollowers.toLocaleString("pt-BR")} sub={`Conectado a: @${dadosGeral?.username || "perfil"}`} delay={300} highlight />
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+                <Metric icon={<Eye size={18} className="text-brand" />} label="Visualizações" value={totalImpressions.toLocaleString("pt-BR")} sub="Impressões acumuladas" delay={0} />
+                <Metric icon={<BarChart3 size={18} className="text-brand" />} label="Alcance Geral" value={totalReachGeral.toLocaleString("pt-BR")} sub="Contas alcançadas" delay={100} pulse />
+                <Metric icon={<UserCheck size={18} className="text-brand" />} label="Visitas Perfil" value={totalProfileViews.toLocaleString("pt-BR")} sub="Cliques para o perfil" delay={200} />
+                <Metric icon={<Users size={18} className="text-white" />} label="Seguidores" value={totalFollowers.toLocaleString("pt-BR")} sub={`@${dadosGeral?.username || "perfil"}`} delay={300} highlight />
               </div>
 
               {/* SEÇÃO ADICIONAL: GRÁFICO COMPARATIVO */}
-              <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card animate-float-up" style={{ animationDelay: "400ms" }}>
+              <div className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 shadow-card animate-float-up" style={{ animationDelay: "400ms" }}>
                 <div className="flex items-center justify-between mb-6">
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider sm:tracking-widest text-muted-foreground flex items-center gap-2">
                       <TrendingUp size={16} /> Distribuição de Tráfego Diário
                     </h3>
-                    <p className="text-xs text-muted-foreground">Proporção volumétrica das ações capturadas na Meta.</p>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground">Proporção volumétrica das ações capturadas na Meta.</p>
                   </div>
                 </div>
                 
@@ -420,25 +420,25 @@ export default function DashboardSucessoPage() {
               </div>
             </div>
           ) : abaAtiva === "post" ? (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {/* SELETOR DE HISTÓRICO DE CAMPANHAS */}
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 shadow-card">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-brand-soft">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-brand-soft">
                     <History size={20} className="text-foreground" />
                   </div>
                   <div>
                     <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Histórico de Publicações</div>
-                    <div className="text-xs text-muted-foreground">Selecione uma campanha anterior para consultar seu histórico de métricas.</div>
+                    <div className="text-xs text-muted-foreground">Selecione uma campanha anterior para consultar seu histórico.</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {loadingPost && <Loader2 size={16} className="animate-spin text-primary" />}
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {loadingPost && <Loader2 size={16} className="animate-spin text-primary shrink-0" />}
                   <select
                     value={selectedCampaignId || ""}
                     onChange={(e) => handleSelectCampaign(Number(e.target.value))}
-                    className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-xs font-bold focus:border-primary focus:outline-none shadow-sm cursor-pointer w-full sm:w-auto sm:min-w-[280px] max-w-full"
+                    className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-xs font-bold focus:border-primary focus:outline-none shadow-sm cursor-pointer w-full sm:w-auto sm:min-w-[280px] max-w-full truncate"
                   >
                     {campaignsHistory.length === 0 ? (
                       <option value="">Publicação Mais Recente</option>
@@ -454,14 +454,14 @@ export default function DashboardSucessoPage() {
               </div>
 
               {/* CARDS DO POST SELECIONADO */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                <Metric icon={<Heart size={20} className="text-red-500 fill-red-500" />} label="Curtidas Disponíveis" value={postLikes.toString()} sub="Engajamento ativo na publicação" delay={0} />
-                <Metric icon={<BarChart3 size={20} className="text-brand" />} label="Alcance Dedicado" value={postReach.toLocaleString("pt-BR")} sub="Pessoas alcançadas pela publicação" delay={100} />
-                <Metric icon={<MessageSquare size={20} className="text-brand" />} label="Comentários Totais" value={postCommentsCount.toString()} sub="Interações discursivas catalogadas" delay={200} pulse />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+                <Metric icon={<Heart size={18} className="text-red-500 fill-red-500" />} label="Curtidas" value={postLikes.toString()} sub="Engajamento ativo no post" delay={0} />
+                <Metric icon={<BarChart3 size={18} className="text-brand" />} label="Alcance" value={postReach.toLocaleString("pt-BR")} sub="Pessoas alcançadas" delay={100} />
+                <Metric icon={<MessageSquare size={18} className="text-brand" />} label="Comentários" value={postCommentsCount.toString()} sub="Interações discursivas" delay={200} pulse />
               </div>
 
               {/* CAIXA DE COMENTÁRIOS DO FEED */}
-              <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-card flex flex-col justify-between animate-float-up" style={{ animationDelay: '300ms' }}>
+              <div className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 shadow-card flex flex-col justify-between animate-float-up" style={{ animationDelay: '300ms' }}>
                 <div>
                   <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
                     <MessageSquare size={14} /> Histórico de Comentários do Feed
@@ -473,9 +473,9 @@ export default function DashboardSucessoPage() {
                         return (
                           <div 
                             key={i} 
-                            className={`rounded-2xl border px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
+                            className={`rounded-2xl border px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed shadow-sm transition-all ${
                               ehResposta 
-                                ? "border-border/20 bg-background/30 text-muted-foreground ml-6 text-xs italic" 
+                                ? "border-border/20 bg-background/30 text-muted-foreground ml-4 sm:ml-6 text-xs italic" 
                                 : "border-border/40 bg-background/60 text-foreground font-medium"
                             }`}
                           >
@@ -484,7 +484,7 @@ export default function DashboardSucessoPage() {
                         );
                       })
                     ) : (
-                      <div className="text-sm text-muted-foreground italic px-4 py-3">
+                      <div className="text-xs sm:text-sm text-muted-foreground italic px-2 py-3">
                         Nenhum comentário associado a esta publicação ainda.
                       </div>
                     )}
@@ -508,14 +508,14 @@ export default function DashboardSucessoPage() {
               )}
 
               {/* Cabeçalho da Fila de Agendamentos */}
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/60 bg-card p-6 shadow-card">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 shadow-card">
                 <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-brand-soft">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-brand-soft">
                     <CalendarClock size={20} className="text-foreground" />
                   </div>
                   <div>
                     <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fila de Publicações Agendadas</div>
-                    <div className="text-xs text-muted-foreground">Campanhas programadas para publicação automática ou notificação manual.</div>
+                    <div className="text-xs text-muted-foreground">Campanhas programadas para publicação automática ou manual.</div>
                   </div>
                 </div>
 
@@ -523,7 +523,7 @@ export default function DashboardSucessoPage() {
                   <button
                     onClick={carregarAgendados}
                     disabled={loadingScheduled}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-background/80 px-4 py-2.5 text-xs font-bold text-muted-foreground transition hover:text-foreground hover:bg-card shadow-sm disabled:opacity-50"
+                    className="inline-flex w-full sm:w-auto justify-center items-center gap-2 rounded-2xl border border-border/80 bg-background/80 px-4 py-2.5 text-xs font-bold text-muted-foreground transition hover:text-foreground hover:bg-card shadow-sm disabled:opacity-50"
                   >
                     <RotateCcw size={14} className={loadingScheduled ? "animate-spin text-primary" : ""} />
                     Atualizar Fila
@@ -533,36 +533,36 @@ export default function DashboardSucessoPage() {
 
               {/* Conteúdo da Fila */}
               {loadingScheduled && scheduledList.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card p-12 text-center shadow-card">
+                <div className="flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-8 sm:p-12 text-center shadow-card">
                   <Loader2 size={32} className="animate-spin text-primary mb-3" />
                   <p className="text-sm font-semibold text-muted-foreground">Carregando fila de agendamentos...</p>
                 </div>
               ) : scheduledList.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card p-12 text-center shadow-card animate-float-up">
+                <div className="flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-8 sm:p-12 text-center shadow-card animate-float-up">
                   <div className="grid h-16 w-16 place-items-center rounded-2xl bg-secondary/50 text-muted-foreground mb-4">
                     <Calendar size={32} className="opacity-60" />
                   </div>
-                  <h3 className="text-lg font-bold text-foreground">Nenhuma publicação agendada</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-foreground">Nenhuma publicação agendada</h3>
                   <p className="mt-1.5 max-w-md text-xs sm:text-sm text-muted-foreground">
                     Você não possui postagens na fila no momento. Crie e agende novas campanhas no Estúdio de Criação para que sejam publicadas automaticamente.
                   </p>
-                  <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                  <div className="mt-6 flex flex-wrap gap-3 justify-center w-full">
                     <button
                       onClick={() => router.push("/radar")}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-brand px-5 py-3 text-xs font-bold text-white shadow-card transition hover:scale-[1.02]"
+                      className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-3 text-xs font-bold text-white shadow-card transition hover:scale-[1.02]"
                     >
-                      <Sparkles size={14} /> Explorar Oportunidades no Radar
+                      <Sparkles size={14} /> Explorar no Radar
                     </button>
                     <button
                       onClick={() => router.push("/gerador")}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-5 py-3 text-xs font-bold text-muted-foreground transition hover:text-foreground hover:bg-card"
+                      className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-5 py-3 text-xs font-bold text-muted-foreground transition hover:text-foreground hover:bg-card"
                     >
                       Ir ao Estúdio de Criação
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {scheduledList.map((item) => {
                     const isAutonomous = item.publish_mode === "AUTONOMOUS";
                     const isProcessing = item.status === "PROCESSING";
@@ -570,7 +570,7 @@ export default function DashboardSucessoPage() {
                     return (
                       <div
                         key={item.id}
-                        className="rounded-3xl border border-border/60 bg-card overflow-hidden shadow-card flex flex-col justify-between transition hover:border-border duration-200 animate-float-up"
+                        className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card overflow-hidden shadow-card flex flex-col justify-between transition hover:border-border duration-200 animate-float-up"
                       >
                         {/* Imagem / Thumbnail */}
                         <div className="relative aspect-video w-full bg-secondary/30 overflow-hidden border-b border-border/40">

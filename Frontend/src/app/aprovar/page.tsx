@@ -207,33 +207,33 @@ export default function AprovarPage() {
 
   return (
     <TopBar>
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main className="mx-auto max-w-5xl px-3.5 sm:px-6 py-5 sm:py-10">
         <div className="flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs text-muted-foreground">
             Etapa 3 de 4 · Aprovação
           </div>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl text-center">
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-4xl text-center">
             Confirme e ative a <span className="text-gradient-brand">Publicação Automática</span>
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground text-center">
+          <p className="mt-2 max-w-xl text-xs sm:text-sm text-muted-foreground text-center">
             A IA fará tudo por você, mas você está sempre no controle. Revise o resumo e dispare a campanha.
           </p>
         </div>
 
         {((!generatedImage && !uploaded) || !generatedCopy) && (
-          <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-300 flex flex-wrap items-center justify-between gap-3 animate-float-up">
+          <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs sm:text-sm text-amber-300 flex flex-wrap items-center justify-between gap-3 animate-float-up">
             <div className="flex items-center gap-2.5">
               <AlertTriangle size={18} className="text-amber-400 flex-shrink-0" />
               <span><strong>A campanha ainda não foi gerada completamente.</strong> Por favor, gere a imagem e a legenda da campanha no Estúdio de Criação antes de publicar no Instagram.</span>
             </div>
-            <Link href="/gerador" className="rounded-xl bg-gradient-brand px-4 py-2 text-xs font-bold text-white shadow-card hover:scale-[1.02] transition">
+            <Link href="/gerador" className="rounded-xl bg-gradient-brand px-4 py-2 text-xs font-bold text-white shadow-card hover:scale-[1.02] transition w-full sm:w-auto text-center">
               Ir para o Estúdio
             </Link>
           </div>
         )}
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <div className="rounded-3xl border border-border/60 bg-card p-6 lg:col-span-3 shadow-card">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 lg:col-span-3 shadow-card">
             <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Resumo da campanha</div>
             <div className="mt-4 space-y-3">
               <SummaryRow 
@@ -247,14 +247,14 @@ export default function AprovarPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <div className={`rounded-3xl p-[1.5px] transition ${autonomous ? "bg-gradient-brand animate-gradient-shift" : "bg-border"}`}>
-              <div className="rounded-3xl bg-card p-6">
+            <div className={`rounded-2xl sm:rounded-3xl p-[1.5px] transition ${autonomous ? "bg-gradient-brand animate-gradient-shift" : "bg-border"}`}>
+              <div className="rounded-2xl sm:rounded-3xl bg-card p-4 sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                       <Shield size={12} /> Modo de publicação
                     </div>
-                    <div className="mt-2 text-xl font-bold">{autonomous ? "Publicação Autorizada" : "Publicação Manual"}</div>
+                    <div className="mt-2 text-lg sm:text-xl font-bold">{autonomous ? "Publicação Autorizada" : "Publicação Manual"}</div>
                   </div>
                   <button
                     onClick={() => setAutonomous((v) => !v)}
@@ -266,28 +266,28 @@ export default function AprovarPage() {
 
                 <div className="mt-5 rounded-2xl border border-border/60 bg-background/40 p-4">
                   <div className="flex items-center justify-between">
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                    <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
                       {autonomous ? "Agendado para" : "Publicar manualmente em"}
                     </div>
                     <span className="inline-flex items-center gap-1 rounded-md bg-secondary/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                       <Clock size={10} /> Brasília (UTC-3)
                     </span>
                   </div>
-                  <div className="mt-2.5 flex items-center gap-3">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:gap-3">
                     <input 
                       type="date" 
                       min="2024-01-01"
                       max="2035-12-31"
                       value={scheduleDate}
                       onChange={(e) => setScheduleDate(e.target.value)}
-                      className="rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
+                      className="flex-1 min-w-[130px] rounded-lg border border-border/60 bg-card px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
                     />
                     <span className="text-muted-foreground text-xs">às</span>
                     <input 
                       type="time" 
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
-                      className="w-24 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
+                      className="w-24 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
                     />
                   </div>
 
@@ -310,7 +310,7 @@ export default function AprovarPage() {
               <button 
                 onClick={activate} 
                 disabled={loading || (!generatedImage && !uploaded) || !generatedCopy} 
-                className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-4 text-sm font-bold text-white shadow-card transition hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-4 sm:px-5 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-white shadow-card transition hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <><Loader2 size={16} className="animate-spin" /> {isScheduledFuture ? "Agendando..." : "Ativando..."}</>
@@ -320,7 +320,7 @@ export default function AprovarPage() {
                   <><Zap size={16} /> Publicar Campanha Agora <ArrowRight size={16} className="transition group-hover:translate-x-0.5" /></>
                 )}
               </button>
-              <Link href="/gerador" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-5 py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground">
+              <Link href="/gerador" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/60 px-5 py-3 text-xs sm:text-sm font-semibold text-muted-foreground transition hover:text-foreground">
                 <ArrowLeft size={14} /> Editar campanha
               </Link>
             </div>

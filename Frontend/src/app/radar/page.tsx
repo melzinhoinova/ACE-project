@@ -321,15 +321,15 @@ export default function RadarPage() {
 
   return (
     <TopBar>
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      <main className="mx-auto max-w-7xl px-3.5 sm:px-6 py-5 sm:py-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="animate-float-up">
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
               {saudacao}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">Calendário estratégico de oportunidades e datas comemorativas</p>
+            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">Calendário estratégico de oportunidades e datas comemorativas</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={() => {
                 const everydayPost = {
@@ -344,26 +344,26 @@ export default function RadarPage() {
                 sessionStorage.setItem("ace.selectedHoliday", JSON.stringify(everydayPost));
                 router.push("/gerador");
               }}
-              className="inline-flex items-center gap-2 rounded-2xl border border-primary/40 bg-card/70 px-4 py-2 text-xs font-bold text-foreground shadow-sm transition-all hover:bg-card hover:border-primary hover:scale-[1.02] active:scale-[0.98] group"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-card/70 px-3 sm:px-4 py-2 text-xs font-bold text-foreground shadow-sm transition-all hover:bg-card hover:border-primary hover:scale-[1.02] active:scale-[0.98] group"
               title="Criar um post espontâneo para o feed sem data comemorativa específica"
             >
-              <Sparkles size={16} className="text-primary fill-primary/20 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110 shrink-0" />
+              <Sparkles size={15} className="text-primary fill-primary/20 transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110 shrink-0" />
               <span>Publicação do Dia a Dia</span>
             </button>
 
             <button
               onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-brand px-4 py-2 text-xs font-semibold text-white shadow-lg glow-brand transition hover:scale-[1.03] active:scale-[0.98]"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-3 sm:px-4 py-2 text-xs font-semibold text-white shadow-lg glow-brand transition hover:scale-[1.03] active:scale-[0.98]"
             >
-              <Plus size={16} /> Nova Oportunidade
+              <Plus size={15} /> Nova Oportunidade
             </button>
-            <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success animate-float-up">
+            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success animate-float-up">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
               </span>
               <Zap size={12} />
-              {holidays.length} oportunidades carregadas
+              {holidays.length} oportunidades
             </div>
           </div>
         </div>
@@ -565,22 +565,22 @@ function FeaturedCard({
   isDeleting: boolean;
 }) {
   return (
-    <div className="relative mt-8">
+    <div className="relative mt-6 sm:mt-8">
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-brand opacity-20 blur-3xl" />
-      <div className="border-gradient-brand rounded-3xl p-7 sm:p-9 card-surface flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
+      <div className="border-gradient-brand rounded-3xl p-4 sm:p-8 card-surface flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
           <div className="inline-flex items-center gap-2 rounded-full bg-danger/10 border border-danger/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-danger">
             <Flame size={12} />
             {isHot ? "Oportunidade em alta agora" : "Oportunidade selecionada"}
           </div>
-          <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl break-words" title={selected.nome}>
+          <h2 className="mt-3 text-2xl sm:text-4xl font-extrabold leading-tight break-words" title={selected.nome}>
             {clampNome(selected.nome, 45)}
           </h2>
           {selected.description && (
-            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">{selected.description}</p>
+            <p className="mt-2 text-xs sm:text-sm text-muted-foreground max-w-2xl">{selected.description}</p>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <CalendarIcon size={14} /> {selected.data}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><CalendarIcon size={14} /> {selected.data}</span>
             <span>·</span>
             <span>
               {selected.daysAway === 0
@@ -590,7 +590,7 @@ function FeaturedCard({
                   : `há ${Math.abs(selected.daysAway)} dias`}
             </span>
             <span
-              className={`ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${SCOPE_STYLE[selected.escopo]}`}
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${SCOPE_STYLE[selected.escopo]}`}
             >
               {SCOPE_LABEL[selected.escopo]}
               {selected.local ? ` · ${selected.local}` : ""}
@@ -599,21 +599,21 @@ function FeaturedCard({
         </div>
 
         {/* Action Buttons for Edit / Delete */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end mt-1 sm:mt-0">
           <button
             onClick={onEdit}
             title="Editar Oportunidade"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-card/80 px-3 py-2 text-xs font-medium hover:bg-card hover:border-primary transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium hover:bg-card hover:border-primary transition"
           >
-            <Pencil size={14} /> Editar
+            <Pencil size={13} /> Editar
           </button>
           <button
             onClick={onDelete}
             disabled={isDeleting}
             title="Excluir Oportunidade"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-xs font-medium text-danger hover:bg-danger/20 transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition disabled:opacity-50"
           >
-            <Trash2 size={14} /> Excluir
+            <Trash2 size={13} /> Excluir
           </button>
         </div>
       </div>
@@ -652,19 +652,19 @@ function CalendarGrid({
   const isThisMonthToday = TODAY.getFullYear() === year && TODAY.getMonth() === month;
 
   return (
-    <div className="rounded-3xl card-surface p-5 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="text-lg font-semibold capitalize">
+    <div className="rounded-3xl card-surface p-3.5 sm:p-6">
+      <div className="mb-3 sm:mb-4 flex items-center justify-between">
+        <div className="text-base sm:text-lg font-semibold capitalize">
           {MONTH_NAMES[month]} {year}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onPrev} className="grid h-9 w-9 place-items-center rounded-lg border border-border/80 hover:bg-card/80" aria-label="Mês anterior">
+          <button onClick={onPrev} className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border border-border/80 hover:bg-card/80" aria-label="Mês anterior">
             <ChevronLeft size={16} />
           </button>
-          <button onClick={onToday} className="rounded-lg border border-border/80 px-3 py-1.5 text-xs font-medium hover:bg-card/80">
+          <button onClick={onToday} className="rounded-lg border border-border/80 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-medium hover:bg-card/80">
             Hoje
           </button>
-          <button onClick={onNext} className="grid h-9 w-9 place-items-center rounded-lg border border-border/80 hover:bg-card/80" aria-label="Próximo mês">
+          <button onClick={onNext} className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-lg border border-border/80 hover:bg-card/80" aria-label="Próximo mês">
             <ChevronRight size={16} />
           </button>
         </div>
@@ -680,11 +680,11 @@ function CalendarGrid({
           const isToday = isThisMonthToday && day === TODAY.getDate();
           const isSelected = h && h.id === selectedId;
           const isHot = h && h.id === hotId;
-          const base = "aspect-square rounded-lg p-1.5 text-left transition";
+          const base = "aspect-square rounded-lg p-1 sm:p-1.5 text-left transition flex flex-col justify-between";
           if (!h) {
             return (
-              <div key={i} className={`${base} border border-border/40 text-xs text-muted-foreground ${isToday ? "ring-1 ring-border/80" : ""}`}>
-                {day}
+              <div key={i} className={`${base} border border-border/40 text-[11px] sm:text-xs text-muted-foreground ${isToday ? "ring-1 ring-border/80 font-bold" : ""}`}>
+                <span>{day}</span>
               </div>
             );
           }
@@ -695,12 +695,13 @@ function CalendarGrid({
               className={`${base} border hover:scale-[1.03] ${scoreBg(h.score)} ${isSelected ? "border-primary bg-card" : ""} ${isToday ? "ring-1 ring-border/80" : ""}`}
               title={h.nome}
             >
-              <div className="flex items-start justify-between">
-                <span className="text-sm font-bold">{day}</span>
-                {isHot && <Flame size={11} className="text-[oklch(0.78_0.18_25)]" />}
+              <div className="flex items-start justify-between w-full">
+                <span className="text-xs sm:text-sm font-bold leading-none">{day}</span>
+                {isHot && <Flame size={10} className="text-[oklch(0.78_0.18_25)] shrink-0" />}
               </div>
-              <div className="mt-0.5 truncate text-[9px] font-medium text-foreground/90">{h.nome}</div>
-              <div className={`text-[9px] font-bold ${scoreColor(h.score)}`}>{formatScore(h.score)}</div>
+              <div className="hidden sm:block truncate text-[9px] font-medium text-foreground/90 w-full">{h.nome}</div>
+              <div className="block sm:hidden h-1.5 w-1.5 rounded-full bg-primary mx-auto" />
+              <div className={`hidden sm:block text-[9px] font-bold ${scoreColor(h.score)}`}>{formatScore(h.score)}</div>
             </button>
           );
         })}

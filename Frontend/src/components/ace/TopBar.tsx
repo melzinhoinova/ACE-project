@@ -168,11 +168,11 @@ export function TopBar({ children }: AppShellProps) {
 
       {/* HEADER FOR MOBILE & TABLET */}
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/70 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto flex h-16 items-center justify-between gap-6 px-6 py-4">
+        <div className="mx-auto flex h-16 items-center justify-between gap-3 sm:gap-6 px-4 sm:px-6 py-4">
           <Link href="/radar" className="shrink-0">
             <AceLogo size="sm" />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button className="relative grid h-10 w-10 place-items-center rounded-full border border-border/80 text-muted-foreground hover:text-foreground">
               <Bell size={16} />
               <span className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-gradient-brand" />
@@ -272,19 +272,57 @@ export function TopBar({ children }: AppShellProps) {
       </header>
 
       {/* MAIN CONTENT AREA */}
-      <div className={`flex-1 min-w-0 transition-all duration-300 ease-in-out ${isCollapsed ? "lg:pl-20" : "lg:pl-64"}`}>
+      <div className={`flex-1 min-w-0 transition-all duration-300 ease-in-out pb-20 lg:pb-0 ${isCollapsed ? "lg:pl-20" : "lg:pl-64"}`}>
         {children}
       </div>
 
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 lg:hidden border-t border-border/80 bg-background/95 backdrop-blur-xl px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-bottom">
+        {STEPS.map((s) => {
+          const active = pathname === s.to;
+          const Icon = s.icon;
+          return (
+            <Link
+              key={s.to}
+              href={s.to}
+              className={`relative flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-all duration-200 active:scale-95 ${
+                active ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <div className="relative">
+                <Icon
+                  size={20}
+                  className={`${active ? "text-primary stroke-[2.5]" : "text-muted-foreground"} ${
+                    s.to === "/gerador" && isGenerating ? "animate-spin text-primary" : ""
+                  }`}
+                />
+                {s.to === "/gerador" && isGenerating && (
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                )}
+              </div>
+              <span className={`text-[10px] leading-tight ${active ? "text-foreground font-bold" : "text-muted-foreground"}`}>
+                {s.label === "Estúdio de Criação" ? "Estúdio" : s.label}
+              </span>
+              {active && (
+                <span className="h-0.5 w-4 rounded-full bg-gradient-brand" />
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
       {/* FLOATING SUCCESS NOTIFICATION TOAST */}
       {showSuccessToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-card/95 p-4 shadow-2xl backdrop-blur-xl animate-float-up max-w-sm">
+        <div className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-card/95 p-3.5 shadow-2xl backdrop-blur-xl animate-float-up max-w-[calc(100vw-2rem)] sm:max-w-sm">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
             <Sparkles size={20} className="animate-pulse" />
           </div>
-          <div className="flex flex-col pr-1">
-            <div className="text-xs font-bold text-foreground">Campanha com IA Concluída!</div>
-            <div className="text-[11px] text-muted-foreground">O novo criativo está pronto no Estúdio.</div>
+          <div className="flex flex-col pr-1 min-w-0">
+            <div className="text-xs font-bold text-foreground truncate">Campanha com IA Concluída!</div>
+            <div className="text-[11px] text-muted-foreground truncate">O novo criativo está pronto.</div>
           </div>
           <button
             onClick={() => {
@@ -297,7 +335,7 @@ export function TopBar({ children }: AppShellProps) {
           </button>
           <button
             onClick={dismissToast}
-            className="text-muted-foreground hover:text-foreground p-1 transition cursor-pointer"
+            className="text-muted-foreground hover:text-foreground p-1 transition cursor-pointer shrink-0"
             aria-label="Fechar"
           >
             <X size={14} />

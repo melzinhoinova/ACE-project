@@ -413,7 +413,7 @@ export default function GeradorPage() {
 
   return (
     <TopBar>
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-3.5 sm:px-6 py-5 sm:py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs text-muted-foreground">
@@ -426,7 +426,7 @@ export default function GeradorPage() {
                 <span>Etapa 2 de 4 · Estúdio de Criação</span>
               )}
             </div>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h1 className="mt-2.5 text-2xl font-extrabold tracking-tight sm:text-4xl leading-tight">
               {stage === "idle" ? (
                 <span className="inline-flex items-center gap-3">
                   <Wand2 className="text-primary" />
@@ -836,10 +836,10 @@ export default function GeradorPage() {
                           <button
                             type="button"
                             onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 p-1 bg-black/70 hover:bg-black text-white rounded-full opacity-0 group-hover:opacity-100 transition duration-150"
+                            className="absolute top-1 right-1 p-1.5 bg-black/70 hover:bg-black text-white rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition duration-150"
                             title="Remover imagem"
                           >
-                            <Trash2 size={10} />
+                            <Trash2 size={11} />
                           </button>
                         </div>
                       ))}
