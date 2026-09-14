@@ -29,14 +29,11 @@ client = genai.Client(api_key=os.getenv("GEMINI_KEY"))
 DETECTION_MODEL = "gemini-flash-lite-latest"
 
 PROMPT_DETECCAO = """
-Analise esta imagem de produto. Pode haver uma ou mais unidades do mesmo
-produto na foto (ex: duas garrafas iguais lado a lado).
-
-Identifique APENAS UMA unidade do produto — a mais nítida, centralizada e
-bem enquadrada — mesmo que existam outras unidades iguais na imagem.
+Analise esta imagem de produto(s).
+Identifique a área principal do produto ou kit/conjunto de produtos em destaque na foto, garantindo que todo o conjunto (garrafas, tampas, rótulos e embalagens) esteja incluído no enquadramento.
 
 Responda APENAS em JSON, no formato:
-{"box_2d": [ymin, xmin, ymax, xmax], "label": "nome curto do produto"}
+{"box_2d": [ymin, xmin, ymax, xmax], "label": "nome curto do produto ou conjunto"}
 
 As coordenadas box_2d devem estar normalizadas de 0 a 1000 (não em pixels),
 onde [0,0] é o canto superior esquerdo e [1000,1000] o canto inferior direito.

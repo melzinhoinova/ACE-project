@@ -12,6 +12,7 @@ from src.services.gemini_service import generate_campaign_copy, CampanhaInput
 from src.services.openai_service import openai_edit_response
 from src.services.fidelity_service import score_image_fidelity
 from src.services.product_detection_service import crop_to_single_product
+from src.services.product_composite_service import create_product_lineup_composite
 from src.services.cloudinary_service import upload_original_product_image, upload_generated_image
 from src.services.master_asset_service import get_master_product_image_bytes
 from src.models.database_models import CampaignReference
@@ -26,16 +27,23 @@ QUALITY_TESTES = "medium"  # Modo preferido: estética mais natural, orgânica e
 
 def _executar_pipeline_geracao(
     dados: CampanhaInput,
-    imagem_bytes: bytes,
+    images_list: list[bytes],
     texto_promocional: str | None,
     final_evento: str | None,
 ) -> dict:
     identificador = uuid.uuid4().hex
+    num_products = len(images_list)
 
-    # 0. Normaliza a entrada — extrai um produto único e bem enquadrado
-    imagem_original = crop_to_single_product(imagem_bytes)
+    # 0. Normaliza a entrada:
+    # Se múltiplos produtos forem enviados, compõe um lineup comercial com todos eles lado a lado
+    # Se apenas um produto for enviado, extrai e enquadra o produto
+    if num_products > 1:
+        print(f"[Multi-Product] Compondo lineup comercial para {num_products} produtos enviados...")
+        imagem_original = create_product_lineup_composite(images_list)
+    else:
+        imagem_original = crop_to_single_product(images_list[0])
 
-    # 1. Persiste a foto original ANTES de gerar
+    # 1. Persiste a foto original/composta ANTES de gerar
     original_url = upload_original_product_image(imagem_original, identificador)
 
     # 2. Copywriting + prompt de CENA comercial com estilo de referência
@@ -52,6 +60,7 @@ def _executar_pipeline_geracao(
             imagem_original,
             quality=QUALITY_TESTES,
             promo_text=texto_promocional,
+            num_products=num_products,
         )
         score, motivo = score_image_fidelity(imagem_original, imagem_gerada)
         url_tentativa = upload_generated_image(imagem_gerada, identificador, tentativa)
@@ -183,7 +192,7 @@ async def gerar_campanha(
         return await run_in_threadpool(
             _executar_pipeline_geracao,
             dados,
-            images_list[0],
+            images_list,
             texto_promocional,
             final_evento,
         )

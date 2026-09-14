@@ -38,6 +38,21 @@ import {
 import { CampaignReference, fetchReferences, getApiBaseUrl } from "@/lib/references-api";
 import { useGeneration } from "@/app/generation-context";
 
+function dataURLtoFile(dataurl: string, filename: string): File {
+  const arr = dataurl.split(",");
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
+const MAX_PRODUCTS = 6;
+
 function ArtPreview({ 
   holiday,
   uploaded, 
@@ -248,7 +263,14 @@ export default function GeradorPage() {
       
       const activeDetalhes = customDetalhes !== undefined ? customDetalhes : detalhes;
       const activeEstilo = customEstilo !== undefined ? customEstilo : estilo;
-      const activeFiles = filesToUse !== undefined ? filesToUse : filesToUpload;
+      let activeFiles = filesToUse !== undefined ? filesToUse : filesToUpload;
+
+      // Fallback de segurança: se activeFiles estiver vazio mas uploadedList contiver fotos, restaura para envio
+      if ((!activeFiles || activeFiles.length === 0) && uploadedList.length > 0) {
+        activeFiles = uploadedList.map((url, idx) =>
+          dataURLtoFile(url, `product-${idx + 1}.jpg`)
+        );
+      }
 
       if (activeDetalhes) {
         formData.append("detalhes", activeDetalhes);
@@ -302,6 +324,10 @@ export default function GeradorPage() {
         const parsed = JSON.parse(storedUploads);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setUploadedList(parsed);
+          const restoredFiles = parsed.map((url: string, index: number) =>
+            dataURLtoFile(url, `restored-product-${index + 1}.jpg`)
+          );
+          setFilesToUpload(restoredFiles);
         }
       } catch {
         /* empty */
@@ -337,12 +363,23 @@ export default function GeradorPage() {
   };
 
   // Função auxiliar compartilhada: merge de novos arquivos com os existentes,
-  // leitura como base64 e atualização de estado (respeita limite de 3 imagens)
+  // leitura como base64 e atualização de estado (respeita limite de até MAX_PRODUCTS)
   const handleDroppedFiles = (newFiles: File[]) => {
     const imageFiles = newFiles.filter((f) => f.type.startsWith("image/"));
     if (imageFiles.length === 0) return;
 
-    const combined = [...filesToUpload, ...imageFiles].slice(0, 3);
+    let currentFiles = filesToUpload;
+    if (currentFiles.length === 0 && uploadedList.length > 0) {
+      currentFiles = uploadedList.map((url, idx) =>
+        dataURLtoFile(url, `product-${idx + 1}.jpg`)
+      );
+    }
+
+    if (currentFiles.length + imageFiles.length > MAX_PRODUCTS) {
+      alert(`Você pode enviar no máximo ${MAX_PRODUCTS} produtos por campanha.`);
+    }
+
+    const combined = [...currentFiles, ...imageFiles].slice(0, MAX_PRODUCTS);
 
     const readPromises = combined.map((file) =>
       new Promise<string>((resolve) => {
@@ -364,10 +401,17 @@ export default function GeradorPage() {
   const handleReplaceAtIndex = (idx: number, file: File) => {
     if (!file.type.startsWith("image/")) return;
 
+    let currentFiles = [...filesToUpload];
+    if (currentFiles.length === 0 && uploadedList.length > 0) {
+      currentFiles = uploadedList.map((u, i) =>
+        dataURLtoFile(u, `product-${i + 1}.jpg`)
+      );
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const url = String(reader.result);
-      const newFiles = [...filesToUpload];
+      const newFiles = [...currentFiles];
       const newUrls = [...uploadedList];
       newFiles[idx] = file;
       newUrls[idx] = url;
@@ -388,7 +432,13 @@ export default function GeradorPage() {
   };
 
   const removeImage = (index: number) => {
-    const newFiles = filesToUpload.filter((_, i) => i !== index);
+    let currentFiles = filesToUpload;
+    if (currentFiles.length === 0 && uploadedList.length > 0) {
+      currentFiles = uploadedList.map((u, i) =>
+        dataURLtoFile(u, `product-${i + 1}.jpg`)
+      );
+    }
+    const newFiles = currentFiles.filter((_, i) => i !== index);
     const newUrls = uploadedList.filter((_, i) => i !== index);
     setFilesToUpload(newFiles);
     setUploadedList(newUrls);
@@ -790,10 +840,10 @@ export default function GeradorPage() {
               {/* Upload de Fotos do Produto (com aviso do Master Fallback) */}
               <div className="border-t border-border/40 pt-4">
                 <div className="mb-1 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  <ImagePlus size={14} className="text-primary" /> Fotos do Produto (Opcional, máx. 3)
+                  <ImagePlus size={14} className="text-primary" /> Fotos do Produto (Opcional, até 6)
                 </div>
                 <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
-                  Envie sua foto ou deixe vazio para usar automaticamente a garrafa oficial do <strong className="text-foreground">Melzinho</strong> com 100% de fidelidade ao rótulo.
+                  Envie fotos dos seus produtos ou deixe vazio para usar automaticamente a garrafa oficial do <strong className="text-foreground">Melzinho</strong> com 100% de fidelidade ao rótulo.
                 </p>
                 <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFileChange} className="hidden" />
                 
@@ -843,7 +893,7 @@ export default function GeradorPage() {
                           </button>
                         </div>
                       ))}
-                      {uploadedList.length < 3 && (
+                      {uploadedList.length < MAX_PRODUCTS && (
                         <button
                           type="button"
                           onClick={() => fileRef.current?.click()}
