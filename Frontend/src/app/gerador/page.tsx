@@ -36,6 +36,7 @@ import {
   Shuffle,
 } from "lucide-react";
 import { CampaignReference, fetchReferences, getApiBaseUrl } from "@/lib/references-api";
+import { useGeneration } from "@/app/generation-context";
 
 function ArtPreview({ 
   holiday,
@@ -168,6 +169,17 @@ export default function GeradorPage() {
 
   const isMountedRef = useRef(true);
 
+  const {
+    isGenerating,
+    startGeneration,
+    cancelGeneration,
+    lastResult,
+    generationError,
+  } = useGeneration();
+
+  const [cancelNotice, setCancelNotice] = useState(false);
+
+  // Sincroniza o estado do gerador com o contexto global
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -175,24 +187,48 @@ export default function GeradorPage() {
     };
   }, []);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const [cancelNotice, setCancelNotice] = useState(false);
+  useEffect(() => {
+    if (isGenerating) {
+      setStage("loading");
+      setRegenerating(true);
+    } else {
+      setRegenerating(false);
+      if (lastResult?.imagem_instagram || sessionStorage.getItem("ace.generatedImage")) {
+        setStage("ready");
+      }
+    }
+  }, [isGenerating]);
+
+  // Atualiza imediatamente quando a IA terminar de gerar (mesmo que o usuário tenha ido para o Calendário)
+  useEffect(() => {
+    if (lastResult) {
+      setGenerated(lastResult.imagem_instagram);
+      setGeneratedCopy(lastResult.legenda_instagram);
+      setStage("ready");
+      setRegenerating(false);
+    }
+  }, [lastResult]);
+
+  // Se houver erro vindo do pipeline
+  useEffect(() => {
+    if (generationError) {
+      alert(`Erro ao gerar campanha:\n${generationError}`);
+      setRegenerating(false);
+      setStage(generated || lastResult ? "ready" : "idle");
+    }
+  }, [generationError]);
 
   const handleCancelGeneration = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
+    cancelGeneration();
+    setCancelNotice(true);
+    setTimeout(() => setCancelNotice(false), 5000);
+    setStage(generated || lastResult ? "ready" : "idle");
+    setRegenerating(false);
   };
 
   const fetchCampaign = async (customDetalhes?: string, customEstilo?: string, filesToUse?: File[]) => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
     setStage("loading");
+    setRegenerating(true);
     try {
       const formData = new FormData();
 
@@ -232,58 +268,19 @@ export default function GeradorPage() {
         });
       }
 
-      const { getAuthHeaders } = await import("@/lib/opportunities-api");
-      const authHeaders = await getAuthHeaders();
-      // Não define Content-Type manual para que o navegador configure o boundary do multipart/form-data
-      delete authHeaders["Content-Type"];
-
-      const API_BASE = getApiBaseUrl();
-      const res = await fetch(`${API_BASE}/api/campanha`, {
-        method: "POST",
-        headers: authHeaders,
-        body: formData,
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null);
-        const errMsg = errData?.detail || `Erro ${res.status} ao gerar campanha.`;
-        throw new Error(typeof errMsg === "string" ? errMsg : JSON.stringify(errMsg));
-      }
-
-      const data = await res.json();
-      
-      sessionStorage.setItem("ace.generatedImage", data.imagem_instagram || "");
-      sessionStorage.setItem("ace.generatedCopy", data.legenda_instagram || "");
-      sessionStorage.setItem("ace.originalImageUrl", data.original_image_url || "");
-      sessionStorage.setItem("ace.fidelityScore", data.fidelity_score !== null && data.fidelity_score !== undefined ? String(data.fidelity_score) : "");
-      sessionStorage.setItem("ace.approved", data.approved !== null && data.approved !== undefined ? String(data.approved) : "");
-      
-      if (isMountedRef.current) {
-        setGenerated(data.imagem_instagram);
-        setGeneratedCopy(data.legenda_instagram);
-        setStage("ready");
-      }
+      await startGeneration(formData, holiday?.nome || "Campanha");
     } catch (err: any) {
       if (err.name === "AbortError") {
-        console.log("Geração abortada com sucesso pelo usuário.");
-        if (isMountedRef.current) {
-          setCancelNotice(true);
-          setTimeout(() => {
-            if (isMountedRef.current) setCancelNotice(false);
-          }, 5000);
-          setStage(generated ? "ready" : "idle");
-          setRegenerating(false);
-        }
+        console.log("Geração abortada pelo usuário.");
+        setCancelNotice(true);
+        setTimeout(() => setCancelNotice(false), 5000);
+        setStage(generated || lastResult ? "ready" : "idle");
+        setRegenerating(false);
         return;
       }
       console.error("Erro ao gerar campanha:", err);
-      if (isMountedRef.current) {
-        alert(`Erro ao gerar campanha:\n${err.message || "Verifique o terminal do backend."}`);
-        setStage("idle");
-      }
-    } finally {
-      abortControllerRef.current = null;
+      setStage(generated || lastResult ? "ready" : "idle");
+      setRegenerating(false);
     }
   };
 
@@ -298,20 +295,33 @@ export default function GeradorPage() {
       }
     }
 
-    // Remove as imagens de referência anteriores do cache para evitar que fiquem órfãs ao recarregar a página
-    sessionStorage.removeItem("ace.uploadedImages");
-    sessionStorage.removeItem("ace.uploadedImage");
-    setUploadedList([]);
-    setFilesToUpload([]);
-    
-    const storedGenImg = sessionStorage.getItem("ace.generatedImage");
-    const storedGenCopy = sessionStorage.getItem("ace.generatedCopy");
-    if (storedGenImg && storedGenCopy) {
-      setGenerated(storedGenImg);
-      setGeneratedCopy(storedGenCopy);
-      setStage("ready");
+    // Restaura as imagens enviadas anteriormente sem resetá-las
+    const storedUploads = sessionStorage.getItem("ace.uploadedImages");
+    if (storedUploads) {
+      try {
+        const parsed = JSON.parse(storedUploads);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setUploadedList(parsed);
+        }
+      } catch {
+        /* empty */
+      }
+    }
+
+    // Se estiver atualmente gerando no contexto global, entra em modo loading
+    if (isGenerating) {
+      setStage("loading");
+      setRegenerating(true);
     } else {
-      setStage("idle");
+      const currentGenImg = lastResult?.imagem_instagram || sessionStorage.getItem("ace.generatedImage");
+      const currentGenCopy = lastResult?.legenda_instagram || sessionStorage.getItem("ace.generatedCopy");
+      if (currentGenImg && currentGenCopy) {
+        setGenerated(currentGenImg);
+        setGeneratedCopy(currentGenCopy);
+        setStage("ready");
+      } else {
+        setStage("idle");
+      }
     }
 
     fetchReferences(false)

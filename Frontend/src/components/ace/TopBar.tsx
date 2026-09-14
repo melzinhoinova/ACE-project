@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AceLogo } from "./AceLogo";
-import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings, ShieldCheck } from "lucide-react";
+import { Bell, Menu, Search, X, Calendar, Wand2, Zap, Camera, BarChart3, ChevronLeft, ChevronRight, LogOut, User as UserIcon, Settings, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/app/auth-context";
+import { useGeneration } from "@/app/generation-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,9 +29,11 @@ interface AppShellProps {
 
 export function TopBar({ children }: AppShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, profile, logout } = useAuth();
+  const { isGenerating, showSuccessToast, dismissToast } = useGeneration();
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row bg-background w-full max-w-full overflow-x-hidden">
@@ -67,8 +70,14 @@ export function TopBar({ children }: AppShellProps) {
                     : "text-muted-foreground hover:bg-card/40 hover:text-foreground"
                 }`}
               >
-                <Icon size={18} className={active ? "text-white" : "text-muted-foreground"} />
+                <Icon size={18} className={`${active ? "text-white" : "text-muted-foreground"} ${s.to === "/gerador" && isGenerating ? "animate-spin" : ""}`} />
                 {!isCollapsed && <span>{s.label}</span>}
+                {s.to === "/gerador" && isGenerating && (
+                  <span className="ml-auto flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -246,8 +255,14 @@ export function TopBar({ children }: AppShellProps) {
                         : "text-muted-foreground hover:bg-card/60 hover:text-foreground"
                     }`}
                   >
-                    <Icon size={16} className={active ? "text-white" : "text-muted-foreground"} />
+                    <Icon size={16} className={`${active ? "text-white" : "text-muted-foreground"} ${s.to === "/gerador" && isGenerating ? "animate-spin" : ""}`} />
                     <span>{s.label}</span>
+                    {s.to === "/gerador" && isGenerating && (
+                      <span className="ml-auto flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -260,6 +275,35 @@ export function TopBar({ children }: AppShellProps) {
       <div className={`flex-1 min-w-0 transition-all duration-300 ease-in-out ${isCollapsed ? "lg:pl-20" : "lg:pl-64"}`}>
         {children}
       </div>
+
+      {/* FLOATING SUCCESS NOTIFICATION TOAST */}
+      {showSuccessToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-card/95 p-4 shadow-2xl backdrop-blur-xl animate-float-up max-w-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+            <Sparkles size={20} className="animate-pulse" />
+          </div>
+          <div className="flex flex-col pr-1">
+            <div className="text-xs font-bold text-foreground">Campanha com IA Concluída!</div>
+            <div className="text-[11px] text-muted-foreground">O novo criativo está pronto no Estúdio.</div>
+          </div>
+          <button
+            onClick={() => {
+              dismissToast();
+              router.push("/gerador");
+            }}
+            className="shrink-0 rounded-xl bg-gradient-brand px-3 py-1.5 text-xs font-bold text-white shadow-card hover:scale-105 transition active:scale-95 cursor-pointer"
+          >
+            Ver
+          </button>
+          <button
+            onClick={dismissToast}
+            className="text-muted-foreground hover:text-foreground p-1 transition cursor-pointer"
+            aria-label="Fechar"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
