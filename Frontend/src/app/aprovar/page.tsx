@@ -5,7 +5,65 @@ import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { TopBar } from "@/components/ace/TopBar";
 import { getApiBaseUrl } from "@/lib/references-api";
-import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Camera, Clock, CheckCircle2, Loader2, MessageCircle, Shield, Users, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Camera, Clock, CheckCircle2, Loader2, MessageCircle, Shield, Users, Zap, Repeat } from "lucide-react";
+
+type RecurrenceOption = "none" | "1_week" | "every_monday" | "4_weeks";
+
+interface RecurrenceScheduleItem {
+  dateStr: string;
+  timeStr: string;
+  label: string;
+}
+
+function getRecurrenceDates(
+  baseDate: string,
+  baseTime: string,
+  option: RecurrenceOption
+): RecurrenceScheduleItem[] {
+  if (option === "none" || !baseDate) return [];
+
+  const [y, m, d] = baseDate.split("-").map(Number);
+  const results: RecurrenceScheduleItem[] = [];
+
+  if (option === "1_week") {
+    const nextD = new Date(y, m - 1, d + 7);
+    const yyyy = nextD.getFullYear();
+    const mm = String(nextD.getMonth() + 1).padStart(2, "0");
+    const dd = String(nextD.getDate()).padStart(2, "0");
+    results.push({
+      dateStr: `${yyyy}-${mm}-${dd}`,
+      timeStr: baseTime || "09:00",
+      label: "Repetição após 1 semana (+7 dias)",
+    });
+  } else if (option === "every_monday") {
+    const currD = new Date(y, m - 1, d);
+    const dayOfWeek = currD.getDay(); // 0 = Dom, 1 = Seg, ...
+    const daysUntilMonday = dayOfWeek === 1 ? 7 : (8 - dayOfWeek) % 7 || 7;
+    const nextMonday = new Date(y, m - 1, d + daysUntilMonday);
+    const yyyy = nextMonday.getFullYear();
+    const mm = String(nextMonday.getMonth() + 1).padStart(2, "0");
+    const dd = String(nextMonday.getDate()).padStart(2, "0");
+    results.push({
+      dateStr: `${yyyy}-${mm}-${dd}`,
+      timeStr: baseTime || "09:00",
+      label: "Próxima segunda-feira (início de semana)",
+    });
+  } else if (option === "4_weeks") {
+    for (let week = 1; week <= 4; week++) {
+      const nextD = new Date(y, m - 1, d + week * 7);
+      const yyyy = nextD.getFullYear();
+      const mm = String(nextD.getMonth() + 1).padStart(2, "0");
+      const dd = String(nextD.getDate()).padStart(2, "0");
+      results.push({
+        dateStr: `${yyyy}-${mm}-${dd}`,
+        timeStr: baseTime || "09:00",
+        label: `Semana ${week} (+${week * 7} dias)`,
+      });
+    }
+  }
+
+  return results;
+}
 
 function SummaryRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -23,6 +81,7 @@ export default function AprovarPage() {
   const router = useRouter();
   const [autonomous, setAutonomous] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [recurrenceOption, setRecurrenceOption] = useState<RecurrenceOption>("none");
 
   const [holiday, setHoliday] = useState<any>({ nome: "Campanha", data: "" });
   const [uploaded, setUploaded] = useState<string | null>(null);
@@ -80,6 +139,10 @@ export default function AprovarPage() {
       return false;
     }
   }, [scheduleDate, scheduleTime]);
+
+  const recurrenceDates = useMemo(() => {
+    return getRecurrenceDates(scheduleDate, scheduleTime, recurrenceOption);
+  }, [scheduleDate, scheduleTime, recurrenceOption]);
 
   const activate = async () => {
     const base64Image = generatedImage || uploaded;
@@ -151,8 +214,26 @@ export default function AprovarPage() {
           fidelity_score: fidelityScore !== null && !isNaN(fidelityScore!) ? fidelityScore : undefined,
         });
 
-        console.log("Campanha agendada com sucesso no horário de Brasília!");
-        router.push(`/sucesso?agendado=true&modo=${autonomous ? "autorizado" : "manual"}`);
+        // Agenda as repetições programadas
+        for (const rec of recurrenceDates) {
+          const recTargetIso = `${rec.dateStr}T${rec.timeStr}:00-03:00`;
+          const recScheduledUtcIso = new Date(recTargetIso).toISOString();
+          await scheduleCampaign({
+            title: holiday.id === "dia-a-dia"
+              ? `Publicação do Dia a Dia (${rec.label})`
+              : (holiday.nome ? `Campanha ${holiday.nome} (${rec.label})` : `Campanha Instagram (${rec.label})`),
+            caption,
+            imageUrl,
+            scheduled_at: recScheduledUtcIso,
+            publish_mode: autonomous ? "AUTONOMOUS" : "MANUAL",
+            opportunity: String(oppId),
+            original_image_url: originalImageUrl || undefined,
+            fidelity_score: fidelityScore !== null && !isNaN(fidelityScore!) ? fidelityScore : undefined,
+          });
+        }
+
+        console.log("Campanha e repetições agendadas com sucesso no horário de Brasília!");
+        router.push(`/sucesso?agendado=true&modo=${autonomous ? "autorizado" : "manual"}${recurrenceDates.length > 0 ? `&repeticao=true&total_agendados=${1 + recurrenceDates.length}` : ""}`);
         return;
       }
 
@@ -189,7 +270,28 @@ export default function AprovarPage() {
           console.warn("Aviso ao gravar campanha no Supabase:", dbErr);
         }
 
-        router.push("/sucesso");
+        // Se o usuário selecionou repetição/recorrência, agenda os próximos posts automáticos
+        if (recurrenceDates.length > 0) {
+          for (const rec of recurrenceDates) {
+            const recTargetIso = `${rec.dateStr}T${rec.timeStr}:00-03:00`;
+            const recScheduledUtcIso = new Date(recTargetIso).toISOString();
+            await scheduleCampaign({
+              title: holiday.id === "dia-a-dia"
+                ? `Publicação do Dia a Dia (${rec.label})`
+                : (holiday.nome ? `Campanha ${holiday.nome} (${rec.label})` : `Campanha Instagram (${rec.label})`),
+              caption,
+              imageUrl,
+              scheduled_at: recScheduledUtcIso,
+              publish_mode: autonomous ? "AUTONOMOUS" : "MANUAL",
+              opportunity: String(oppId),
+              original_image_url: originalImageUrl || undefined,
+              fidelity_score: fidelityScore !== null && !isNaN(fidelityScore!) ? fidelityScore : undefined,
+            });
+          }
+          router.push(`/sucesso?repeticao=true&total_agendados=${recurrenceDates.length}`);
+        } else {
+          router.push("/sucesso");
+        }
       } else {
         const errData = await response.json().catch(() => null);
         const errMsg = errData?.detail?.detalhes?.error?.message
@@ -300,6 +402,99 @@ export default function AprovarPage() {
                     <div className="mt-3 flex items-center gap-2 rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-muted-foreground">
                       <Zap size={14} className="text-brand shrink-0" />
                       <span>Data/horário atual ou passado: a publicação será <strong>imediata</strong> ao confirmar.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Opção de Repetição / Recorrência Automática (Pedido Adriano: Repetir após 1 semana) */}
+                <div className="mt-4 rounded-2xl border border-border/60 bg-background/40 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Repeat size={14} className="text-primary" />
+                      <span className="text-[10px] sm:text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
+                        Repetir publicação automaticamente
+                      </span>
+                    </div>
+                    {recurrenceOption !== "none" && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary animate-fade-in">
+                        Recorrência Ativa
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Seletor de Opções de Recorrência */}
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRecurrenceOption("none")}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition ${
+                        recurrenceOption === "none"
+                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                          : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
+                      }`}
+                    >
+                      <div className="font-bold">Não repetir</div>
+                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">Publicar apenas uma vez</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRecurrenceOption("1_week")}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition relative ${
+                        recurrenceOption === "1_week"
+                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                          : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
+                      }`}
+                    >
+                      <div className="font-bold flex items-center justify-between">
+                        <span>Depois de 1 semana</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">+7 dias</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">Republica o post 7 dias depois</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRecurrenceOption("every_monday")}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition ${
+                        recurrenceOption === "every_monday"
+                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                          : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
+                      }`}
+                    >
+                      <div className="font-bold">Início de semana</div>
+                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">Dispara na próxima segunda-feira</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRecurrenceOption("4_weeks")}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition ${
+                        recurrenceOption === "4_weeks"
+                          ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                          : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
+                      }`}
+                    >
+                      <div className="font-bold">Mensal (4 semanas)</div>
+                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">1 post por semana durante 1 mês</div>
+                    </button>
+                  </div>
+
+                  {/* Detalhes dinâmicos da repetição selecionada */}
+                  {recurrenceOption !== "none" && recurrenceDates.length > 0 && (
+                    <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs text-foreground space-y-1.5 animate-float-up">
+                      <div className="flex items-center gap-1.5 font-bold text-primary text-[11px]">
+                        <Repeat size={13} />
+                        <span>Agendamentos recorrentes programados:</span>
+                      </div>
+                      <ul className="space-y-1 text-[11px] text-muted-foreground pl-1">
+                        {recurrenceDates.map((item, i) => (
+                          <li key={i} className="flex items-center justify-between">
+                            <span>• {item.label}:</span>
+                            <strong className="text-foreground">{item.dateStr.split("-").reverse().join("/")} às {item.timeStr}</strong>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>

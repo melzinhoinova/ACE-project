@@ -38,8 +38,16 @@ def _executar_pipeline_geracao(
     # Se múltiplos produtos forem enviados, compõe um lineup comercial com todos eles lado a lado
     # Se apenas um produto for enviado, extrai e enquadra o produto
     if num_products > 1:
-        print(f"[Multi-Product] Compondo lineup comercial para {num_products} produtos enviados...")
-        imagem_original = create_product_lineup_composite(images_list)
+        print(f"[Multi-Product] Recortando e compondo lineup comercial para {num_products} produtos enviados...")
+        cropped_list = []
+        for idx, img_b in enumerate(images_list):
+            try:
+                c = crop_to_single_product(img_b)
+                cropped_list.append(c)
+            except Exception as e:
+                print(f"[Multi-Product] Aviso ao recortar item #{idx + 1}: {e}")
+                cropped_list.append(img_b)
+        imagem_original = create_product_lineup_composite(cropped_list)
     else:
         imagem_original = crop_to_single_product(images_list[0])
 

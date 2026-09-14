@@ -35,7 +35,8 @@ import {
   Zap,
   Shield,
   RotateCcw,
-  ExternalLink
+  ExternalLink,
+  Repeat
 } from "lucide-react";
 
 function useCounter(target: number, duration = 1200) {
@@ -146,6 +147,15 @@ export default function DashboardSucessoPage() {
         setIsAgendado(true);
         setModoAgendado(params.get("modo"));
         setAbaAtiva("agendados");
+      }
+      if (params.get("repeticao") === "true") {
+        setAbaAtiva("agendados");
+        const total = params.get("total_agendados") || "1";
+        setStatusNotice(
+          `Recorrência ativada com sucesso! ${total} ${
+            total === "1" ? "publicação futura foi adicionada" : "publicações futuras foram adicionadas"
+          } na fila de agendamentos automáticos do Instagram.`
+        );
       }
     }
   }, []);
@@ -345,6 +355,23 @@ export default function DashboardSucessoPage() {
                     : "O sistema processará e publicará a mídia no feed do Instagram automaticamente no horário programado."}
                 </div>
               </div>
+            </div>
+          )}
+
+          {statusNotice && (
+            <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-primary/10 p-4 text-primary flex items-center justify-between gap-3 animate-float-up shadow-sm mt-4">
+              <div className="flex items-center gap-3">
+                <Repeat size={20} className="text-primary shrink-0" />
+                <div className="text-xs sm:text-sm font-medium text-left">
+                  <strong>Recorrência Programada!</strong>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {statusNotice}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setStatusNotice(null)} className="text-muted-foreground hover:text-foreground p-1" title="Fechar">
+                <X size={16} />
+              </button>
             </div>
           )}
         </div>

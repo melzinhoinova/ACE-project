@@ -1,20 +1,39 @@
 """
 src/services/product_composite_service.py
 
-Monta uma composição limpa e equilibrada quando o usuário envia múltiplos
-produtos (2, 3, 4, 5 ou mais). Garante que todos os produtos sejam
-preservados lado a lado no quadro de referência enviado ao gpt-image-2,
-evitando que a IA alucine garrafas genéricas.
+Monta uma composição de estúdio comercial equilibrada e orgânica quando o
+usuário envia múltiplos produtos (kit, combo duo ou coleção de produtos).
+Garante alinhamento de base, sombras de contato para ancoragem física,
+proporções harmônicas e espaçamento de kit de presente/degustação,
+permitindo que o gpt-image-2 gere uma cena realista e perfeitamente integrada.
 """
 
 import io
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
+
+
+def _add_contact_shadow(canvas: Image.Image, x: int, y: int, width: int):
+    """
+    Desenha uma sombra de contato suave e difusa sob a base da garrafa/produto,
+    criando sensação imediata de peso, solo físico e profundidade 3D.
+    """
+    shadow_w = max(20, int(width * 0.90))
+    shadow_h = max(12, int(width * 0.16))
+    shadow_x = x + (width - shadow_w) // 2
+    shadow_y = y - int(shadow_h * 0.4)
+
+    shadow_layer = Image.new("RGBA", (shadow_w, shadow_h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(shadow_layer)
+    draw.ellipse([0, 0, shadow_w, shadow_h], fill=(25, 25, 25, 110))
+    shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=max(3, shadow_h // 3)))
+
+    canvas.paste(shadow_layer, (shadow_x, shadow_y), shadow_layer)
 
 
 def create_product_lineup_composite(images_bytes: list[bytes]) -> bytes:
     """
     Combina múltiplos bytes de imagens de produtos em uma única imagem composta
-    (lineup comercial) com fundo limpo, pronta para ser usada como referência no gpt-image-2.
+    estilo kit/duo comercial com fundo neutro de estúdio e sombras de contato.
     """
     valid_bytes = [b for b in images_bytes if b and len(b) > 0]
     if not valid_bytes:
@@ -23,14 +42,14 @@ def create_product_lineup_composite(images_bytes: list[bytes]) -> bytes:
     if len(valid_bytes) == 1:
         return valid_bytes[0]
 
-    pil_images = []
+    pil_images: list[Image.Image] = []
     for b in valid_bytes:
         try:
             img = Image.open(io.BytesIO(b))
             img.load()
             pil_images.append(img.convert("RGBA"))
         except Exception as e:
-            print(f"[product_composite] Aviso: erro ao carregar imagem: {e}")
+            print(f"[product_composite] Aviso ao carregar imagem: {e}")
 
     if not pil_images:
         return valid_bytes[0]
@@ -38,9 +57,9 @@ def create_product_lineup_composite(images_bytes: list[bytes]) -> bytes:
     if len(pil_images) == 1:
         return valid_bytes[0]
 
-    # Altura alvo padronizada para equilibrar os produtos
+    # Altura padrão para alinhar as garrafas harmonicamente no mesmo plano visual
     target_height = 800
-    resized_images = []
+    resized_images: list[Image.Image] = []
     total_width = 0
 
     for img in pil_images:
@@ -55,29 +74,43 @@ def create_product_lineup_composite(images_bytes: list[bytes]) -> bytes:
     if not resized_images:
         return valid_bytes[0]
 
-    # Espaçamento dinâmico entre produtos
-    spacing = max(20, min(50, int(total_width * 0.05)))
-    canvas_w = total_width + spacing * (len(resized_images) - 1)
-    canvas_h = int(target_height * 1.15)
+    # Para 2 produtos (kit/duo clássico), mantemos espaçamento próximo e intimista de kit
+    num_items = len(resized_images)
+    if num_items == 2:
+        spacing = 28
+    else:
+        spacing = max(18, min(40, int(total_width * 0.04)))
 
-    # Cria canvas RGBA transparente
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), (255, 255, 255, 0))
+    canvas_w = total_width + spacing * (num_items - 1) + 80  # margem lateral suave
+    canvas_h = int(target_height * 1.22)  # espaço para topo e base com sombra
 
-    current_x = 0
-    y_offset = int((canvas_h - target_height) / 2)
+    # Canvas transparente de trabalho
+    canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+
+    # Alinhamento pela base (mesmo plano horizontal de apoio)
+    baseline_y = canvas_h - int(target_height * 0.12)
+    current_x = 40
+
+    # 1. Primeiro aplica as sombras de contato sob cada produto no canvas
+    shadow_x = current_x
     for img in resized_images:
-        # Cola preservando transparência se houver canal alfa
+        _add_contact_shadow(canvas, shadow_x, baseline_y, img.size[0])
+        shadow_x += img.size[0] + spacing
+
+    # 2. Depois sobrepõe os produtos perfeitamente sobre a base e sombra
+    for img in resized_images:
+        y_pos = baseline_y - img.size[1]
         if img.mode == "RGBA":
-            canvas.paste(img, (current_x, y_offset), img)
+            canvas.paste(img, (current_x, y_pos), img)
         else:
-            canvas.paste(img, (current_x, y_offset))
+            canvas.paste(img, (current_x, y_pos))
         current_x += img.size[0] + spacing
 
-    # Ajusta o canvas final para caber proporcionalmente dentro de 1024x1024
+    # Redimensiona proporcionalmente para 1024x1024
     canvas.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
 
-    # Fundo branco comercial limpo para o modelo de edição
-    final_canvas = Image.new("RGB", canvas.size, (255, 255, 255))
+    # Fundo neutro de estúdio comercial suave (off-white clean para não gerar artefatos duros)
+    final_canvas = Image.new("RGB", canvas.size, (246, 246, 244))
     final_canvas.paste(canvas, (0, 0), canvas)
 
     buffer = io.BytesIO()

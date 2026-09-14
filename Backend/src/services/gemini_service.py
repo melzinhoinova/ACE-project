@@ -129,10 +129,25 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
         for img_bytes in dados.images_list:
             conteudo_gemini.append(Image.open(io.BytesIO(img_bytes)))
 
-        prompt_sistema += """
+        num_prods = len(dados.images_list)
+        if num_prods > 1:
+            prompt_sistema += f"""
+        ★ FORMATO DA CAMPANHA: COMBO / KIT PROMOCIONAL ({num_prods} PRODUTOS)
+        O anúncio apresenta um Kit / Combo comercial exclusivo composto por {num_prods} produtos/garrafas.
+        
+        No campo 'sugestao_prompt_imagem', elabore uma descrição em INGLÊS de altíssimo nível para uma cena fotográfica comercial de estúdio (high-end commercial advertising flyer poster):
+        - Descreva um ambiente luxuoso onde o KIT de {num_prods} garrafas está organicamente disposto sobre uma superfície elegante de destaque (ex: balcão de bar refinado, madeira nobre de amburana rústica ou mármore escuro polido).
+        - Descreva a iluminação cinematográfica de estúdio: luz direcional suave, luz de recorte dourada/quente (rim light) contornando as garrafas, reflexos realistas no vidro e sombras de contato orgânicas sob cada garrafa, integrando o conjunto à superfície com profundidade 3D.
+        - As garrafas devem aparecer naturalmente agrupadas como uma dupla/coleção harmoniosa de degustação ou presente, nunca como colagens separadas.
+        
+        No campo 'titulo_campanha' e 'legenda_instagram':
+        - Destaque o valor do Combo / Kit / Dose Dupla de Melzinho, perfeito para presentear, compartilhar no fim de semana ou colecionar.
+        """
+        else:
+            prompt_sistema += """
         No campo 'sugestao_prompt_imagem', crie uma descrição em INGLÊS para uma composição publicitária comercial de alto impacto (commercial social media advertising flyer poster) para o Instagram.
         Descreva o ambiente cênico profissional (iluminação de estúdio comercial, reflexos quentes, composição moderna, superfícies de destaque e elementos cênicos do estilo).
-        O produto central em destaque é a garrafa da cachaça artesanal 'Melzinho'.
+        O produto central em destaque é a garrafa da cachaça artesanal 'Melzinho', integrada organicamente com sombras de contato e iluminação envolvente.
         NÃO redesenhe ou altere o rótulo do produto, pois os detalhes visuais da garrafa serão preservados da foto de referência.
         """
     else:
