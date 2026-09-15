@@ -478,31 +478,37 @@ export default function GeradorPage() {
             </div>
             <h1 className="mt-2.5 text-2xl font-extrabold tracking-tight sm:text-4xl leading-tight">
               {stage === "idle" ? (
-                <span className="inline-flex items-center gap-3">
-                  <Wand2 className="text-primary" />
-                  {isEveryday ? (
-                    <>Crie um post casual para o <span className="text-gradient-brand">Feed do Dia a Dia</span></>
-                  ) : (
-                    <>Crie a campanha para <span className="text-gradient-brand">{holiday.nome}</span></>
-                  )}
+                <span className="flex items-start sm:items-center gap-2.5 sm:gap-3">
+                  <Wand2 className="text-primary shrink-0 mt-0.5 sm:mt-0" />
+                  <span>
+                    {isEveryday ? (
+                      <>Crie um post casual para o <span className="text-gradient-brand">Feed do Dia a Dia</span></>
+                    ) : (
+                      <>Crie a campanha para <span className="text-gradient-brand">{holiday.nome}</span></>
+                    )}
+                  </span>
                 </span>
               ) : stage === "loading" ? (
-                <span className="inline-flex items-center gap-3">
-                  <Wand2 className="text-primary animate-pulse" />
-                  {isEveryday ? (
-                    <>IA gerando post do dia a dia para <span className="text-gradient-brand">Cachaça Melzinho</span>...</>
-                  ) : (
-                    <>IA gerando campanha para <span className="text-gradient-brand">{holiday.nome}</span>...</>
-                  )}
+                <span className="flex items-start sm:items-center gap-2.5 sm:gap-3">
+                  <Wand2 className="text-primary animate-pulse shrink-0 mt-0.5 sm:mt-0" />
+                  <span>
+                    {isEveryday ? (
+                      <>IA gerando post do dia a dia para <span className="text-gradient-brand">Cachaça Melzinho</span>...</>
+                    ) : (
+                      <>IA gerando campanha para <span className="text-gradient-brand">{holiday.nome}</span>...</>
+                    )}
+                  </span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-3">
-                  <Check className="text-[oklch(0.74_0.18_145)]" />
-                  {isEveryday ? (
-                    <>Post pronto para o <span className="text-gradient-brand">Feed do Dia a Dia</span>!</>
-                  ) : (
-                    <>Campanha pronta para <span className="text-gradient-brand">{holiday.nome}</span>!</>
-                  )}
+                <span className="flex items-start sm:items-center gap-2.5 sm:gap-3">
+                  <Check className="text-[oklch(0.74_0.18_145)] shrink-0 mt-0.5 sm:mt-0" />
+                  <span>
+                    {isEveryday ? (
+                      <>Post pronto para o <span className="text-gradient-brand">Feed do Dia a Dia</span>!</>
+                    ) : (
+                      <>Campanha pronta para <span className="text-gradient-brand">{holiday.nome}</span>!</>
+                    )}
+                  </span>
                 </span>
               )}
             </h1>
@@ -560,12 +566,13 @@ export default function GeradorPage() {
           <div className="lg:col-span-3">
             <div className="rounded-3xl border border-border/60 bg-card p-5 shadow-card">
               {stage === "idle" ? (
-                <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-secondary/30 border border-dashed border-border/80 flex flex-col items-center justify-center p-6 text-center">
-                  <div className="grid h-16 w-16 place-items-center rounded-2xl bg-card text-muted-foreground shadow-sm animate-float-up">
-                    <Wand2 size={28} className="text-primary/60" />
+                <div className="relative aspect-[4/3] sm:aspect-square w-full overflow-hidden rounded-2xl bg-secondary/30 border border-dashed border-border/80 flex flex-col items-center justify-center p-4 sm:p-6 text-center">
+                  <div className="grid h-12 w-12 sm:h-16 sm:w-16 place-items-center rounded-2xl bg-card text-muted-foreground shadow-sm animate-float-up">
+                    <Wand2 size={24} className="text-primary/60 sm:hidden" />
+                    <Wand2 size={28} className="text-primary/60 hidden sm:block" />
                   </div>
-                  <h3 className="mt-4 text-base font-semibold">Crie sua Campanha</h3>
-                  <p className="mt-2 text-xs text-muted-foreground max-w-[260px] leading-relaxed">
+                  <h3 className="mt-3 sm:mt-4 text-sm sm:text-base font-semibold">Crie sua Campanha</h3>
+                  <p className="mt-1 sm:mt-2 text-xs text-muted-foreground max-w-[280px] leading-relaxed">
                     Escreva suas ideias, selecione o estilo visual e clique em <strong>Gerar Criativo com IA</strong> no painel de configuração para começar.
                   </p>
                 </div>
@@ -649,6 +656,18 @@ export default function GeradorPage() {
                   )}
                 </div>
               </div>
+
+              {stage === "ready" && generated && (
+                <div className="mt-4 lg:hidden">
+                  <button 
+                    onClick={proceed} 
+                    className="w-full group inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-3.5 text-sm font-bold text-white shadow-card transition active:scale-[0.99]"
+                  >
+                    Aprovar e publicar
+                    <ArrowRight size={16} className="transition group-hover:translate-x-0.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -960,7 +979,7 @@ export default function GeradorPage() {
                       <Upload size={14} className={isDraggingOverEmpty ? "text-primary" : ""} />
                     </div>
                     <div className="text-xs font-semibold">
-                      {isDraggingOverEmpty ? "Solte para adicionar" : "Envie imagens do produto (máx. 3)"}
+                      {isDraggingOverEmpty ? "Solte para adicionar" : "Envie imagens do produto (até 6 fotos)"}
                     </div>
                     <div className="text-[10px] text-muted-foreground">PNG ou JPG · para guiar a IA mantendo o original</div>
                   </button>

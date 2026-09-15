@@ -359,17 +359,17 @@ export default function DashboardSucessoPage() {
           )}
 
           {statusNotice && (
-            <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-primary/10 p-4 text-primary flex items-center justify-between gap-3 animate-float-up shadow-sm mt-4">
-              <div className="flex items-center gap-3">
-                <Repeat size={20} className="text-primary shrink-0" />
+            <div className="mx-auto max-w-xl rounded-2xl border border-primary/30 bg-primary/10 p-3 sm:p-4 text-primary flex items-start sm:items-center justify-between gap-2.5 sm:gap-3 animate-float-up shadow-sm mt-4">
+              <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
+                <Repeat size={18} className="text-primary shrink-0 mt-0.5 sm:mt-0" />
                 <div className="text-xs sm:text-sm font-medium text-left">
                   <strong>Recorrência Programada!</strong>
-                  <div className="text-xs text-muted-foreground mt-0.5">
+                  <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {statusNotice}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setStatusNotice(null)} className="text-muted-foreground hover:text-foreground p-1" title="Fechar">
+              <button onClick={() => setStatusNotice(null)} className="text-muted-foreground hover:text-foreground p-1 shrink-0" title="Fechar">
                 <X size={16} />
               </button>
             </div>
@@ -378,16 +378,16 @@ export default function DashboardSucessoPage() {
 
         {/* Seleção de Abas */}
         <div className="flex justify-center max-w-full overflow-x-auto scrollbar-none px-1 py-1">
-          <div className="inline-flex shrink-0 rounded-2xl sm:rounded-full bg-secondary/40 p-1 border border-border/60 backdrop-blur-md gap-1">
+          <div className="inline-flex shrink-0 rounded-2xl sm:rounded-full bg-secondary/40 p-1 border border-border/60 backdrop-blur-md gap-0.5 sm:gap-1">
             <button 
               onClick={() => setAbaAtiva("geral")} 
-              className={`rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 text-xs font-bold transition-all duration-300 whitespace-nowrap ${abaAtiva === "geral" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-xl sm:rounded-full px-3 sm:px-6 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition-all duration-300 whitespace-nowrap ${abaAtiva === "geral" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
               Visão Macro
             </button>
             <button 
               onClick={() => setAbaAtiva("post")} 
-              className={`rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 text-xs font-bold transition-all duration-300 whitespace-nowrap ${abaAtiva === "post" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-xl sm:rounded-full px-3 sm:px-6 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition-all duration-300 whitespace-nowrap ${abaAtiva === "post" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
               Métricas do Post
             </button>
@@ -396,11 +396,11 @@ export default function DashboardSucessoPage() {
                 setAbaAtiva("agendados");
                 carregarAgendados();
               }} 
-              className={`rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 text-xs font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${abaAtiva === "agendados" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-xl sm:rounded-full px-3 sm:px-6 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${abaAtiva === "agendados" ? "bg-card text-foreground shadow-md scale-[1.02] sm:scale-105" : "text-muted-foreground hover:text-foreground"}`}
             >
               <span>Fila de Agendados</span>
               {scheduledList.length > 0 && (
-                <span className="rounded-full bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-extrabold leading-none">
+                <span className="rounded-full bg-primary/20 text-primary border border-primary/30 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-extrabold leading-none">
                   {scheduledList.length}
                 </span>
               )}

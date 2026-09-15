@@ -334,10 +334,35 @@ export default function AprovarPage() {
           </div>
         )}
 
-        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-5">
           <div className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-6 lg:col-span-3 shadow-card">
-            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Resumo da campanha</div>
-            <div className="mt-4 space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Resumo da campanha</div>
+            
+            {/* Prévia visual da arte gerada */}
+            {(generatedImage || uploaded) && (
+              <div className="mb-4 flex items-center gap-3.5 rounded-2xl border border-border/60 bg-background/40 p-3 sm:p-3.5">
+                <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-xl bg-black/40 border border-border/50 shadow-sm">
+                  <img 
+                    src={generatedImage?.startsWith("http") ? generatedImage : (generatedImage ? `data:image/png;base64,${generatedImage}` : (uploaded || ""))} 
+                    alt="Prévia da arte gerada" 
+                    className="h-full w-full object-cover" 
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                    <Sparkles size={11} /> Arte Criada com IA
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-foreground truncate mt-0.5">
+                    {holiday?.nome || "Cachaça Melzinho"}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
+                    {generatedCopy || "Legenda personalizada pronta para publicação."}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2.5 sm:space-y-3">
               <SummaryRow 
                 icon={<Calendar size={16} />} 
                 label={holiday.id === "dia-a-dia" ? "Tipo de Conteúdo" : "Data Comemorativa"} 
@@ -366,7 +391,7 @@ export default function AprovarPage() {
                   </button>
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-border/60 bg-background/40 p-4">
+                <div className="mt-4 sm:mt-5 rounded-2xl border border-border/60 bg-background/40 p-3.5 sm:p-4">
                   <div className="flex items-center justify-between">
                     <div className="text-[10px] sm:text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
                       {autonomous ? "Agendado para" : "Publicar manualmente em"}
@@ -375,22 +400,25 @@ export default function AprovarPage() {
                       <Clock size={10} /> Brasília (UTC-3)
                     </span>
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:gap-3">
-                    <input 
-                      type="date" 
-                      min="2024-01-01"
-                      max="2035-12-31"
-                      value={scheduleDate}
-                      onChange={(e) => setScheduleDate(e.target.value)}
-                      className="flex-1 min-w-[130px] rounded-lg border border-border/60 bg-card px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
-                    />
-                    <span className="text-muted-foreground text-xs">às</span>
-                    <input 
-                      type="time" 
-                      value={scheduleTime}
-                      onChange={(e) => setScheduleTime(e.target.value)}
-                      className="w-24 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium" 
-                    />
+                  <div className="mt-2.5 grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-7 sm:col-span-8">
+                      <input 
+                        type="date" 
+                        min="2024-01-01"
+                        max="2035-12-31"
+                        value={scheduleDate}
+                        onChange={(e) => setScheduleDate(e.target.value)}
+                        className="w-full rounded-xl border border-border/60 bg-card px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium text-foreground shadow-sm" 
+                      />
+                    </div>
+                    <div className="col-span-5 sm:col-span-4">
+                      <input 
+                        type="time" 
+                        value={scheduleTime}
+                        onChange={(e) => setScheduleTime(e.target.value)}
+                        className="w-full rounded-xl border border-border/60 bg-card px-2.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium text-foreground text-center shadow-sm" 
+                      />
+                    </div>
                   </div>
 
                   {isScheduledFuture ? (
@@ -407,91 +435,91 @@ export default function AprovarPage() {
                 </div>
 
                 {/* Opção de Repetição / Recorrência Automática (Pedido Adriano: Repetir após 1 semana) */}
-                <div className="mt-4 rounded-2xl border border-border/60 bg-background/40 p-4">
+                <div className="mt-4 rounded-2xl border border-border/60 bg-background/40 p-3.5 sm:p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Repeat size={14} className="text-primary" />
                       <span className="text-[10px] sm:text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
-                        Repetir publicação automaticamente
+                        Repetir publicação
                       </span>
                     </div>
                     {recurrenceOption !== "none" && (
                       <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary animate-fade-in">
-                        Recorrência Ativa
+                        Ativa
                       </span>
                     )}
                   </div>
                   
-                  {/* Seletor de Opções de Recorrência */}
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {/* Seletor de Opções de Recorrência (Grid 2x2 otimizado para celular) */}
+                  <div className="mt-2.5 grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setRecurrenceOption("none")}
-                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition ${
+                      className={`p-2 sm:p-2.5 rounded-xl border text-left transition ${
                         recurrenceOption === "none"
                           ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
                           : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
                       }`}
                     >
-                      <div className="font-bold">Não repetir</div>
-                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">Publicar apenas uma vez</div>
+                      <div className="font-bold text-[11px] sm:text-xs">Não repetir</div>
+                      <div className="text-[9px] sm:text-[10px] text-muted-foreground font-normal mt-0.5 leading-tight">Post único</div>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setRecurrenceOption("1_week")}
-                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition relative ${
+                      className={`p-2 sm:p-2.5 rounded-xl border text-left transition relative ${
                         recurrenceOption === "1_week"
                           ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
                           : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
                       }`}
                     >
-                      <div className="font-bold flex items-center justify-between">
-                        <span>Depois de 1 semana</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">+7 dias</span>
+                      <div className="font-bold text-[11px] sm:text-xs flex items-center justify-between gap-1">
+                        <span className="truncate">Após 1 sem</span>
+                        <span className="text-[8px] sm:text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold shrink-0">+7d</span>
                       </div>
-                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">Republica o post 7 dias depois</div>
+                      <div className="text-[9px] sm:text-[10px] text-muted-foreground font-normal mt-0.5 leading-tight">7 dias depois</div>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setRecurrenceOption("every_monday")}
-                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition ${
+                      className={`p-2 sm:p-2.5 rounded-xl border text-left transition ${
                         recurrenceOption === "every_monday"
                           ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
                           : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
                       }`}
                     >
-                      <div className="font-bold">Início de semana</div>
-                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">Dispara na próxima segunda-feira</div>
+                      <div className="font-bold text-[11px] sm:text-xs">Segunda-feira</div>
+                      <div className="text-[9px] sm:text-[10px] text-muted-foreground font-normal mt-0.5 leading-tight">Início de sem.</div>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setRecurrenceOption("4_weeks")}
-                      className={`p-2.5 rounded-xl border text-left text-xs font-semibold transition ${
+                      className={`p-2 sm:p-2.5 rounded-xl border text-left transition ${
                         recurrenceOption === "4_weeks"
                           ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
                           : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card"
                       }`}
                     >
-                      <div className="font-bold">Mensal (4 semanas)</div>
-                      <div className="text-[10px] text-muted-foreground font-normal mt-0.5">1 post por semana durante 1 mês</div>
+                      <div className="font-bold text-[11px] sm:text-xs">Mensal</div>
+                      <div className="text-[9px] sm:text-[10px] text-muted-foreground font-normal mt-0.5 leading-tight">4 semanas</div>
                     </button>
                   </div>
 
                   {/* Detalhes dinâmicos da repetição selecionada */}
                   {recurrenceOption !== "none" && recurrenceDates.length > 0 && (
-                    <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs text-foreground space-y-1.5 animate-float-up">
-                      <div className="flex items-center gap-1.5 font-bold text-primary text-[11px]">
-                        <Repeat size={13} />
-                        <span>Agendamentos recorrentes programados:</span>
+                    <div className="mt-2.5 rounded-xl border border-primary/30 bg-primary/5 p-2.5 sm:p-3 text-xs text-foreground space-y-1 animate-float-up">
+                      <div className="flex items-center gap-1.5 font-bold text-primary text-[10px] sm:text-[11px]">
+                        <Repeat size={12} />
+                        <span>Agendamentos recorrentes:</span>
                       </div>
-                      <ul className="space-y-1 text-[11px] text-muted-foreground pl-1">
+                      <ul className="space-y-0.5 text-[10px] sm:text-[11px] text-muted-foreground pl-0.5">
                         {recurrenceDates.map((item, i) => (
-                          <li key={i} className="flex items-center justify-between">
-                            <span>• {item.label}:</span>
-                            <strong className="text-foreground">{item.dateStr.split("-").reverse().join("/")} às {item.timeStr}</strong>
+                          <li key={i} className="flex items-center justify-between gap-2">
+                            <span className="truncate">• {item.label}:</span>
+                            <strong className="text-foreground shrink-0">{item.dateStr.split("-").reverse().join("/")} às {item.timeStr}</strong>
                           </li>
                         ))}
                       </ul>
