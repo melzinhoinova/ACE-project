@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { TopBar } from "@/components/ace/TopBar";
 import { getApiBaseUrl } from "@/lib/references-api";
-import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Camera, Clock, CheckCircle2, Loader2, MessageCircle, Shield, Users, Zap, Repeat } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Calendar, Camera, Clock, CheckCircle2, Loader2, MessageCircle, Shield, Users, Zap, Repeat, Sparkles } from "lucide-react";
 
 type RecurrenceOption = "none" | "1_week" | "every_monday" | "4_weeks";
 
