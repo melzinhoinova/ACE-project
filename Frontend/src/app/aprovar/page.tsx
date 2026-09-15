@@ -92,42 +92,52 @@ export default function AprovarPage() {
   const [approved, setApproved] = useState<boolean>(false);
 
   useEffect(() => {
-    const storedHoliday = sessionStorage.getItem("ace.selectedHoliday");
-    if (storedHoliday) {
-      try { setHoliday(JSON.parse(storedHoliday)); } catch { /* ... */ }
-    }
-
-    const img = sessionStorage.getItem("ace.generatedImage");
-    const upl = sessionStorage.getItem("ace.uploaded");
-    const copy = sessionStorage.getItem("ace.generatedCopy");
-    const orig = sessionStorage.getItem("ace.originalImageUrl");
-    const score = sessionStorage.getItem("ace.fidelityScore");
-    const apprv = sessionStorage.getItem("ace.approved");
-
-    if (img) setGeneratedImage(img);
-    if (upl) setUploaded(upl);
-    if (copy) setGeneratedCopy(copy);
-    if (orig) setOriginalImageUrl(orig);
-    if (score) setFidelityScore(parseFloat(score));
-    if (apprv) setApproved(apprv === "true");
-  }, []);
-
-  const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("");
-
-  useEffect(() => {
     try {
-      // Extrai data e hora atual no fuso oficial de Brasília (America/Sao_Paulo / UTC-3)
-      const nowStr = new Date().toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" });
-      const [currDate, currTime] = nowStr.split(" ");
-      setScheduleDate(currDate);
-      setScheduleTime(currTime ? currTime.slice(0, 5) : "09:00");
-    } catch {
-      const now = new Date();
-      setScheduleDate(now.toISOString().split("T")[0]);
-      setScheduleTime("09:00");
+      const storedHoliday = sessionStorage.getItem("ace.selectedHoliday");
+      if (storedHoliday) {
+        try {
+          const parsed = JSON.parse(storedHoliday);
+          if (parsed && typeof parsed === "object") {
+            setHoliday(parsed);
+          }
+        } catch { /* empty */ }
+      }
+
+      const img = sessionStorage.getItem("ace.generatedImage");
+      const upl = sessionStorage.getItem("ace.uploaded");
+      const copy = sessionStorage.getItem("ace.generatedCopy");
+      const orig = sessionStorage.getItem("ace.originalImageUrl");
+      const score = sessionStorage.getItem("ace.fidelityScore");
+      const apprv = sessionStorage.getItem("ace.approved");
+
+      if (img) setGeneratedImage(img);
+      if (upl) setUploaded(upl);
+      if (copy) setGeneratedCopy(copy);
+      if (orig) setOriginalImageUrl(orig);
+      if (score) setFidelityScore(parseFloat(score));
+      if (apprv) setApproved(apprv === "true");
+    } catch (err) {
+      console.warn("Aviso ao ler sessionStorage em aprovar:", err);
     }
   }, []);
+
+  const [scheduleDate, setScheduleDate] = useState(() => {
+    try {
+      const nowStr = new Date().toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" });
+      return nowStr.split(" ")[0] || new Date().toISOString().split("T")[0];
+    } catch {
+      return new Date().toISOString().split("T")[0];
+    }
+  });
+  const [scheduleTime, setScheduleTime] = useState(() => {
+    try {
+      const nowStr = new Date().toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" });
+      const t = nowStr.split(" ")[1];
+      return t ? t.slice(0, 5) : "09:00";
+    } catch {
+      return "09:00";
+    }
+  });
 
   const isScheduledFuture = useMemo(() => {
     if (!scheduleDate || !scheduleTime) return false;
@@ -196,7 +206,8 @@ export default function AprovarPage() {
         }
       }
 
-      const oppId = typeof holiday.id === "number" ? holiday.id : (holiday.rawId ? Number(holiday.rawId) : 1);
+      const safeHoliday = holiday || { nome: "Campanha", data: "" };
+      const oppId = typeof safeHoliday?.id === "number" ? safeHoliday.id : (safeHoliday?.rawId ? Number(safeHoliday.rawId) : 1);
 
       // Se a data/hora for futura, envia para a rota de agendamento
       if (isScheduledFuture) {
@@ -204,7 +215,7 @@ export default function AprovarPage() {
         const scheduledUtcIso = new Date(targetIso).toISOString();
 
         await scheduleCampaign({
-          title: holiday.id === "dia-a-dia" ? "Publicação do Dia a Dia" : (holiday.nome ? `Campanha ${holiday.nome}` : "Campanha Instagram"),
+          title: safeHoliday?.id === "dia-a-dia" ? "Publicação do Dia a Dia" : (safeHoliday?.nome ? `Campanha ${safeHoliday.nome}` : "Campanha Instagram"),
           caption,
           imageUrl,
           scheduled_at: scheduledUtcIso,
@@ -219,9 +230,9 @@ export default function AprovarPage() {
           const recTargetIso = `${rec.dateStr}T${rec.timeStr}:00-03:00`;
           const recScheduledUtcIso = new Date(recTargetIso).toISOString();
           await scheduleCampaign({
-            title: holiday.id === "dia-a-dia"
+            title: safeHoliday?.id === "dia-a-dia"
               ? `Publicação do Dia a Dia (${rec.label})`
-              : (holiday.nome ? `Campanha ${holiday.nome} (${rec.label})` : `Campanha Instagram (${rec.label})`),
+              : (safeHoliday?.nome ? `Campanha ${safeHoliday.nome} (${rec.label})` : `Campanha Instagram (${rec.label})`),
             caption,
             imageUrl,
             scheduled_at: recScheduledUtcIso,
@@ -254,7 +265,7 @@ export default function AprovarPage() {
         // Salvar a campanha no Supabase
         try {
           await saveCampaign({
-            title: holiday.id === "dia-a-dia" ? "Publicação do Dia a Dia" : (holiday.nome ? `Campanha ${holiday.nome}` : "Campanha Instagram"),
+            title: safeHoliday?.id === "dia-a-dia" ? "Publicação do Dia a Dia" : (safeHoliday?.nome ? `Campanha ${safeHoliday.nome}` : "Campanha Instagram"),
             campaign: caption,
             description: `Imagem Cloudinary: ${imageUrl}`,
             date: scheduleDate || new Date().toISOString().split("T")[0],
@@ -276,9 +287,9 @@ export default function AprovarPage() {
             const recTargetIso = `${rec.dateStr}T${rec.timeStr}:00-03:00`;
             const recScheduledUtcIso = new Date(recTargetIso).toISOString();
             await scheduleCampaign({
-              title: holiday.id === "dia-a-dia"
+              title: safeHoliday?.id === "dia-a-dia"
                 ? `Publicação do Dia a Dia (${rec.label})`
-                : (holiday.nome ? `Campanha ${holiday.nome} (${rec.label})` : `Campanha Instagram (${rec.label})`),
+                : (safeHoliday?.nome ? `Campanha ${safeHoliday.nome} (${rec.label})` : `Campanha Instagram (${rec.label})`),
               caption,
               imageUrl,
               scheduled_at: recScheduledUtcIso,
@@ -326,11 +337,16 @@ export default function AprovarPage() {
           <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs sm:text-sm text-amber-300 flex flex-wrap items-center justify-between gap-3 animate-float-up">
             <div className="flex items-center gap-2.5">
               <AlertTriangle size={18} className="text-amber-400 flex-shrink-0" />
-              <span><strong>A campanha ainda não foi gerada completamente.</strong> Por favor, gere a imagem e a legenda da campanha no Estúdio de Criação antes de publicar no Instagram.</span>
+              <span><strong>Nenhuma campanha pronta no momento.</strong> Para ativar a automação e disparo no feed, gere a arte e a legenda no Estúdio de Criação.</span>
             </div>
-            <Link href="/gerador" className="rounded-xl bg-gradient-brand px-4 py-2 text-xs font-bold text-white shadow-card hover:scale-[1.02] transition w-full sm:w-auto text-center">
-              Ir para o Estúdio
-            </Link>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Link href="/gerador" className="rounded-xl bg-gradient-brand px-4 py-2 text-xs font-bold text-white shadow-card hover:scale-[1.02] transition flex-1 sm:flex-initial text-center">
+                Ir para o Estúdio
+              </Link>
+              <Link href="/sucesso" className="rounded-xl border border-border/80 bg-card/60 px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground transition flex-1 sm:flex-initial text-center">
+                Ver Fila de Agendados
+              </Link>
+            </div>
           </div>
         )}
 
@@ -343,7 +359,7 @@ export default function AprovarPage() {
               <div className="mb-4 flex items-center gap-3.5 rounded-2xl border border-border/60 bg-background/40 p-3 sm:p-3.5">
                 <div className="relative h-16 w-16 sm:h-20 sm:w-20 shrink-0 overflow-hidden rounded-xl bg-black/40 border border-border/50 shadow-sm">
                   <img 
-                    src={generatedImage?.startsWith("http") ? generatedImage : (generatedImage ? `data:image/png;base64,${generatedImage}` : (uploaded || ""))} 
+                    src={generatedImage?.startsWith("http") || generatedImage?.startsWith("data:") ? generatedImage : (generatedImage ? `data:image/png;base64,${generatedImage}` : (uploaded || ""))} 
                     alt="Prévia da arte gerada" 
                     className="h-full w-full object-cover" 
                   />
@@ -365,8 +381,8 @@ export default function AprovarPage() {
             <div className="space-y-2.5 sm:space-y-3">
               <SummaryRow 
                 icon={<Calendar size={16} />} 
-                label={holiday.id === "dia-a-dia" ? "Tipo de Conteúdo" : "Data Comemorativa"} 
-                value={holiday.id === "dia-a-dia" ? "Publicação do Dia a Dia (Feed Casual)" : `${holiday.nome || "Oportunidade"} — ${holiday.data || ""}`} 
+                label={holiday?.id === "dia-a-dia" ? "Tipo de Conteúdo" : "Data Comemorativa"} 
+                value={holiday?.id === "dia-a-dia" ? "Publicação do Dia a Dia (Feed Casual)" : `${holiday?.nome || "Oportunidade"} — ${holiday?.data || ""}`} 
               />
               <SummaryRow icon={<Camera size={16} />} label="Canal de Publicação" value="Instagram — Post no Feed" />
               <SummaryRow icon={<MessageCircle size={16} />} label="Legenda da Campanha" value={generatedCopy ? "Legenda personalizada com IA" : "Aguardando geração"} />
