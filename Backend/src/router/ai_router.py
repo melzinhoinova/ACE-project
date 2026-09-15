@@ -11,7 +11,7 @@ from src.dependencies.api_dependency import get_current_user, get_db, Authentica
 from src.services.gemini_service import generate_campaign_copy, CampanhaInput
 from src.services.openai_service import openai_edit_response
 from src.services.fidelity_service import score_image_fidelity
-from src.services.product_detection_service import crop_to_single_product
+from src.services.product_detection_service import detect_and_crop_product, crop_to_single_product
 from src.services.product_composite_service import create_product_lineup_composite
 from src.services.cloudinary_service import upload_original_product_image, upload_generated_image
 from src.services.master_asset_service import get_master_product_image_bytes
@@ -35,21 +35,25 @@ def _executar_pipeline_geracao(
     num_products = len(images_list)
 
     # 0. Normaliza a entrada:
-    # Se múltiplos produtos forem enviados, compõe um lineup comercial com todos eles lado a lado
-    # Se apenas um produto for enviado, extrai e enquadra o produto
+    # Se múltiplos arquivos forem enviados, compõe um lineup comercial com todos eles lado a lado
+    # Se apenas 1 arquivo for enviado, verifica se ele é um produto único ou se já contém múltiplos produtos (kit/trio)
     if num_products > 1:
-        print(f"[Multi-Product] Recortando e compondo lineup comercial para {num_products} produtos enviados...")
+        print(f"[Multi-Product] Recortando e compondo lineup comercial para {num_products} fotos enviadas...")
         cropped_list = []
         for idx, img_b in enumerate(images_list):
             try:
-                c = crop_to_single_product(img_b)
+                c, _ = detect_and_crop_product(img_b)
                 cropped_list.append(c)
             except Exception as e:
                 print(f"[Multi-Product] Aviso ao recortar item #{idx + 1}: {e}")
                 cropped_list.append(img_b)
         imagem_original = create_product_lineup_composite(cropped_list)
     else:
-        imagem_original = crop_to_single_product(images_list[0])
+        imagem_original, detected_qty = detect_and_crop_product(images_list[0])
+        if detected_qty > 1:
+            print(f"[Kit em Foto Única] Foto enviada contém {detected_qty} produtos juntos no mesmo enquadramento!")
+            num_products = detected_qty
+            dados.num_products = detected_qty
 
     # 1. Persiste a foto original/composta ANTES de gerar
     original_url = upload_original_product_image(imagem_original, identificador)

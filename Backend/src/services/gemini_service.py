@@ -60,6 +60,7 @@ class CampanhaInput:
     texto_promocional: str | None = None
     evento: str | None = None
     evento_descricao: str | None = None
+    num_products: int = 1
 
 
 def generate_campaign_copy(dados: CampanhaInput) -> dict:
@@ -129,7 +130,7 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
         for img_bytes in dados.images_list:
             conteudo_gemini.append(Image.open(io.BytesIO(img_bytes)))
 
-        num_prods = len(dados.images_list)
+        num_prods = max(len(dados.images_list), dados.num_products)
         if num_prods > 1:
             prompt_sistema += f"""
         ★ FORMATO DA CAMPANHA: COMBO / KIT PROMOCIONAL ({num_prods} PRODUTOS)

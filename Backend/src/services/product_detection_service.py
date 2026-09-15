@@ -1,14 +1,15 @@
 """
 src/services/product_detection_service.py
 
-O dono da loja pode mandar a foto de qualquer jeito: duas garrafas lado a
-lado, várias unidades, ângulo torto, fundo com outras coisas no quadro.
-Se mandarmos essa foto "crua" pro images.edit, o modelo pode preservar
-elementos indesejados (ex: duas garrafas na imagem final).
+O usuário pode enviar:
+1. Uma foto com um único produto em destaque.
+2. Uma foto que já é um KIT / COMBO (ex: 2 ou 3 garrafas juntas na mesma foto).
+3. Uma foto com fundo de balcão/mesa ou elementos indesejados.
 
-Este passo usa o Gemini pra localizar UM único produto em destaque na foto
-e recorta só ele, com uma margem de respiro. Se a detecção falhar, cai de
-volta pra foto original sem quebrar o pipeline.
+Este passo usa o Gemini Flash Lite para:
+- Localizar a área principal do produto ou do conjunto completo (kit/trio).
+- Contar quantas unidades/garrafas estão visíveis dentro do conjunto.
+- Recortar com margem de respiro segura sem cortar nenhuma garrafa.
 """
 
 import io
@@ -30,17 +31,22 @@ DETECTION_MODEL = "gemini-flash-lite-latest"
 
 PROMPT_DETECCAO = """
 Analise esta imagem de produto(s).
-Identifique a área principal do produto ou kit/conjunto de produtos em destaque na foto, garantindo que todo o conjunto (garrafas, tampas, rótulos e embalagens) esteja incluído no enquadramento.
+Identifique a área principal do produto ou kit/conjunto de produtos em destaque na foto, garantindo que todo o conjunto (todas as garrafas, tampas, rótulos e embalagens) esteja incluído no enquadramento.
+Conte também quantas unidades de produtos/garrafas distintas estão visíveis dentro desse conjunto principal.
 
 Responda APENAS em JSON, no formato:
-{"box_2d": [ymin, xmin, ymax, xmax], "label": "nome curto do produto ou conjunto"}
+{"box_2d": [ymin, xmin, ymax, xmax], "label": "nome curto do produto ou conjunto", "quantidade": 1}
 
 As coordenadas box_2d devem estar normalizadas de 0 a 1000 (não em pixels),
 onde [0,0] é o canto superior esquerdo e [1000,1000] o canto inferior direito.
 """
 
 
-def crop_to_single_product(imagem_bytes: bytes, margem_pct: float = 0.06) -> bytes:
+def detect_and_crop_product(imagem_bytes: bytes, margem_pct: float = 0.06) -> tuple[bytes, int]:
+    """
+    Localiza o produto ou conjunto de produtos, recorta a área de interesse
+    e retorna uma tupla (bytes_recortados, quantidade_detectada).
+    """
     try:
         pil_original = Image.open(io.BytesIO(imagem_bytes)).convert("RGB")
 
@@ -52,6 +58,7 @@ def crop_to_single_product(imagem_bytes: bytes, margem_pct: float = 0.06) -> byt
 
         resultado = json.loads(response.text)
         ymin, xmin, ymax, xmax = resultado["box_2d"]
+        quantidade = int(resultado.get("quantidade", 1) or 1)
 
         largura, altura = pil_original.size
 
@@ -72,8 +79,14 @@ def crop_to_single_product(imagem_bytes: bytes, margem_pct: float = 0.06) -> byt
 
         buffer = io.BytesIO()
         recorte.save(buffer, format="JPEG", quality=95)
-        return buffer.getvalue()
+        return buffer.getvalue(), max(1, quantidade)
 
     except Exception as erro:
         print(f"[product_detection] Falha ao recortar produto, usando imagem original: {erro}")
-        return imagem_bytes
+        return imagem_bytes, 1
+
+
+def crop_to_single_product(imagem_bytes: bytes, margem_pct: float = 0.06) -> bytes:
+    """Função utilitária legada: retorna apenas os bytes recortados."""
+    recorte, _ = detect_and_crop_product(imagem_bytes, margem_pct)
+    return recorte
