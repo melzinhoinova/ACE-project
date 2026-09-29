@@ -1,7 +1,7 @@
 """
 src/services/fidelity_service.py
 
-Usa o Gemini como "juiz": compara a imagem gerada pelo gpt-image-2 com a
+Usa o Gemini como "juiz": compara a imagem gerada pelo gpt-image-2.5-sunburst com a
 foto original do produto e dá uma nota de fidelidade + motivo.
 """
 
@@ -23,15 +23,13 @@ client = genai.Client(api_key=os.getenv("GEMINI_KEY"))
 JUIZ_MODEL = "gemini-flash-lite-latest"
 
 PROMPT_AVALIACAO = """
-Compare as duas imagens: a primeira é a foto ORIGINAL do produto,
-a segunda é uma imagem GERADA que deveria conter o mesmo produto em uma nova cena.
+Compare as duas imagens: a primeira é a foto ORIGINAL de referência (produto único ou kit/conjunto de produtos),
+a segunda é a imagem GERADA que deve conter os mesmos produtos integrados em uma nova cena comercial.
 
-Avalie o quão fiel a imagem gerada é ao produto original em: cor, formato,
-proporções, texto/rótulo, logotipo e formato da tampa/embalagem.
-
-Seja rigoroso: qualquer distorção perceptível de forma, cor ou texto do rótulo
-deve reduzir bastante o score. Pequenas diferenças de ângulo/iluminação da CENA
-não devem penalizar, desde que o PRODUTO em si esteja fiel.
+Critérios de avaliação rigorosos:
+1. QUANTIDADE E PRESENÇA: Se a imagem original contém múltiplos produtos/garrafas (kit/combo/trio), TODOS os produtos e garrafas devem estar presentes na imagem gerada. A exclusão ou omissão de qualquer produto original deve penalizar severamente a nota (score < 0.6).
+2. FIDELIDADE VISUAL: Avalie a fidelidade em rótulos, títulos das marcas, tipografia, cores do líquido, formato das garrafas e tampas.
+3. Não penalize variações normais de iluminação e composição do cenário, desde que os produtos originais estejam fiéis, legíveis e preservados.
 
 Responda APENAS em JSON, no formato:
 {"score": <número de 0.0 a 1.0>, "motivo": "<explicação curta em português>"}

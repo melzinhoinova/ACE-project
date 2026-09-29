@@ -5,7 +5,7 @@ Monta uma composição de estúdio comercial equilibrada e orgânica quando o
 usuário envia múltiplos produtos (kit, combo duo ou coleção de produtos).
 Garante alinhamento de base, sombras de contato para ancoragem física,
 proporções harmônicas e espaçamento de kit de presente/degustação,
-permitindo que o gpt-image-2 gere uma cena realista e perfeitamente integrada.
+permitindo que o gpt-image-2.5-sunburst gere uma cena realista e perfeitamente integrada.
 """
 
 import io

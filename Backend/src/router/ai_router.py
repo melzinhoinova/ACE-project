@@ -32,28 +32,44 @@ def _executar_pipeline_geracao(
     final_evento: str | None,
 ) -> dict:
     identificador = uuid.uuid4().hex
-    num_products = len(images_list)
 
-    # 0. Normaliza a entrada:
-    # Se múltiplos arquivos forem enviados, compõe um lineup comercial com todos eles lado a lado
-    # Se apenas 1 arquivo for enviado, verifica se ele é um produto único ou se já contém múltiplos produtos (kit/trio)
-    if num_products > 1:
-        print(f"[Multi-Product] Recortando e compondo lineup comercial para {num_products} fotos enviadas...")
-        cropped_list = []
-        for idx, img_b in enumerate(images_list):
-            try:
-                c, _ = detect_and_crop_product(img_b)
-                cropped_list.append(c)
-            except Exception as e:
-                print(f"[Multi-Product] Aviso ao recortar item #{idx + 1}: {e}")
-                cropped_list.append(img_b)
+    # 0. Normaliza e detecta produtos em cada imagem enviada:
+    # Trata tanto o caso de 1 foto com múltiplos produtos (ex: kit com 3 mini garrafas),
+    # quanto o caso de múltiplas fotos enviadas (ex: 1 foto com 1 produto + outra foto com 3 produtos).
+    cropped_list: list[bytes] = []
+    total_detected_qty = 0
+    all_identified_products: list[str] = []
+
+    print(f"[Pipeline] Analisando {len(images_list)} imagem(ns) de entrada...")
+    for idx, img_b in enumerate(images_list):
+        try:
+            c, qty, prods = detect_and_crop_product(img_b)
+            cropped_list.append(c)
+            total_detected_qty += qty
+            all_identified_products.extend(prods)
+            print(f"[Product Detection] Imagem #{idx + 1}: {qty} produto(s) detectado(s) -> {prods}")
+        except Exception as e:
+            print(f"[Product Detection] Aviso ao recortar item #{idx + 1}: {e}")
+            cropped_list.append(img_b)
+            total_detected_qty += 1
+
+    # Remove duplicatas preservando a ordem dos rótulos
+    unique_products = list(dict.fromkeys([p.strip() for p in all_identified_products if p and p.strip()]))
+
+    # O número total de produtos é o total de garrafas detectadas somadas em todas as fotos
+    num_products = max(total_detected_qty, len(images_list), 1)
+    dados.num_products = num_products
+    dados.product_names = unique_products
+
+    print(f"[Pipeline] Total consolidado: {num_products} produto(s) | Marcas/Rótulos: {unique_products}")
+
+    # Monta imagem de referência para preview e persistência
+    if len(cropped_list) > 1:
         imagem_original = create_product_lineup_composite(cropped_list)
+        imagens_para_ia = cropped_list
     else:
-        imagem_original, detected_qty = detect_and_crop_product(images_list[0])
-        if detected_qty > 1:
-            print(f"[Kit em Foto Única] Foto enviada contém {detected_qty} produtos juntos no mesmo enquadramento!")
-            num_products = detected_qty
-            dados.num_products = detected_qty
+        imagem_original = cropped_list[0] if cropped_list else images_list[0]
+        imagens_para_ia = imagem_original
 
     # 1. Persiste a foto original/composta ANTES de gerar
     original_url = upload_original_product_image(imagem_original, identificador)
@@ -63,16 +79,17 @@ def _executar_pipeline_geracao(
     prompt_cena = campanha["sugestao_prompt_imagem"]
     print(f"Prompt de cena gerado: {prompt_cena}")
 
-    # 3. Loop de geração com validação de fidelidade via gpt-image-2
+    # 3. Loop de geração com validação de fidelidade via gpt-image-2.5-sunburst
     melhor = {"url": None, "score": -1.0, "motivo": ""}
 
     for tentativa in range(1, MAX_TENTATIVAS + 1):
         imagem_gerada = openai_edit_response(
             prompt_cena,
-            imagem_original,
+            imagens_para_ia,
             quality=QUALITY_TESTES,
             promo_text=texto_promocional,
             num_products=num_products,
+            product_names=unique_products,
         )
         score, motivo = score_image_fidelity(imagem_original, imagem_gerada)
         url_tentativa = upload_generated_image(imagem_gerada, identificador, tentativa)

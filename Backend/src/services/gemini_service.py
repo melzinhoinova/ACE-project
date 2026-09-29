@@ -61,9 +61,12 @@ class CampanhaInput:
     evento: str | None = None
     evento_descricao: str | None = None
     num_products: int = 1
+    product_names: list[str] = field(default_factory=list)
 
 
 def generate_campaign_copy(dados: CampanhaInput) -> dict:
+    brand_ref = ", ".join(dados.product_names) if dados.product_names else "Melzinho"
+
     prompt_sistema = f"""
     Você é um especialista em marketing digital de alto padrão. Gere uma campanha de alta conversão para o Instagram.
     A legenda gerada (legenda_instagram) deve ser concisa, direta e cativante, com no máximo 2 a 3 parágrafos pequenos,
@@ -75,6 +78,7 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
     Propagandas devem sempre mirar em um público com mais de 18 anos devido a venda de bebidas alcóolicas.
     Nicho do cliente: {dados.nicho}
     Objetivo da campanha: {dados.objetivo}
+    Marca(s) / Produto(s) da campanha: {brand_ref}
     """
 
     if dados.detalhes:
@@ -90,7 +94,7 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
         prompt_sistema += f"""
     ★ EVENTO / DATA COMEMORATIVA CENTRAL: '{dados.evento}'{desc_evento}
     Esta campanha celebra especificamente o evento '{dados.evento}'.
-    A legenda_instagram DEVE conectar o sabor premium e a tradição do Melzinho com a celebração e espírito festivo de '{dados.evento}'.
+    A legenda_instagram DEVE conectar o sabor premium e a tradição de {brand_ref} com a celebração e espírito festivo de '{dados.evento}'.
     """
 
     if dados.reference_recipe:
@@ -110,7 +114,7 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
        - Se for São João / Festa Junina: fogueira acolhedora ao fundo, caneca de quentão, bandeirinhas festivas rústicas.
        - Se for Dia dos Pais: clima nobre de degustação especial, couro, madeira escura e brinde em família.
        - Se for Carnaval: energia vibrante, confetes sutis e clima de celebração tropical.
-    3. A garrafa oficial do 'Melzinho' permanece como o produto hero absoluto, central e com iluminação publicitária brilhante.
+    3. A(s) garrafa(s) autêntica(s) de '{brand_ref}' permanece(m) como o produto hero absoluto, central e com iluminação publicitária brilhante.
     NUNCA ignore o evento '{dados.evento}'. O anúncio DEVE ser inconfundivelmente comemorativo de '{dados.evento}'!
     """
         else:
@@ -118,7 +122,7 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
     elif tem_evento:
         prompt_sistema += f"""
     ★ DIRETRIZ VISUAL DE EVENTO SAZONAL:
-    Crie uma composição publicitária comercial deslumbrante e inconfundivelmente comemorativa para o evento '{dados.evento}', com garrafa hero de Melzinho em primeiro plano, adereços elegantes da data e iluminação festiva de alto padrão.
+    Crie uma composição publicitária comercial deslumbrante e inconfundivelmente comemorativa para o evento '{dados.evento}', com garrafa hero de {brand_ref} em primeiro plano, adereços elegantes da data e iluminação festiva de alto padrão.
     """
 
     if dados.texto_promocional:
@@ -134,26 +138,26 @@ def generate_campaign_copy(dados: CampanhaInput) -> dict:
         if num_prods > 1:
             prompt_sistema += f"""
         ★ FORMATO DA CAMPANHA: COMBO / KIT PROMOCIONAL ({num_prods} PRODUTOS)
-        O anúncio apresenta um Kit / Combo comercial exclusivo composto por {num_prods} produtos/garrafas.
+        O anúncio apresenta um Kit / Combo comercial exclusivo composto por {num_prods} produtos/garrafas: {brand_ref}.
         
         No campo 'sugestao_prompt_imagem', elabore uma descrição em INGLÊS de altíssimo nível para uma cena fotográfica comercial de estúdio (high-end commercial advertising flyer poster):
-        - Descreva um ambiente luxuoso onde o KIT de {num_prods} garrafas está organicamente disposto sobre uma superfície elegante de destaque (ex: balcão de bar refinado, madeira nobre de amburana rústica ou mármore escuro polido).
+        - Descreva um ambiente luxuoso onde o KIT com TODOS os {num_prods} produtos ({brand_ref}) está organicamente disposto sobre uma superfície elegante de destaque (ex: balcão de bar refinado, madeira nobre de amburana rústica ou mármore escuro polido).
         - Descreva a iluminação cinematográfica de estúdio: luz direcional suave, luz de recorte dourada/quente (rim light) contornando as garrafas, reflexos realistas no vidro e sombras de contato orgânicas sob cada garrafa, integrando o conjunto à superfície com profundidade 3D.
-        - As garrafas devem aparecer naturalmente agrupadas como uma dupla/coleção harmoniosa de degustação ou presente, nunca como colagens separadas.
+        - Todas as {num_prods} garrafas devem aparecer naturalmente agrupadas como uma coleção harmoniosa de degustação ou presente, nunca como colagens separadas, com todos os produtos visíveis.
         
         No campo 'titulo_campanha' e 'legenda_instagram':
-        - Destaque o valor do Combo / Kit / Dose Dupla de Melzinho, perfeito para presentear, compartilhar no fim de semana ou colecionar.
+        - Destaque o valor do Combo / Kit / Coleção de {brand_ref}, perfeito para presentear, compartilhar no fim de semana ou colecionar.
         """
         else:
-            prompt_sistema += """
+            prompt_sistema += f"""
         No campo 'sugestao_prompt_imagem', crie uma descrição em INGLÊS para uma composição publicitária comercial de alto impacto (commercial social media advertising flyer poster) para o Instagram.
         Descreva o ambiente cênico profissional (iluminação de estúdio comercial, reflexos quentes, composição moderna, superfícies de destaque e elementos cênicos do estilo).
-        O produto central em destaque é a garrafa da cachaça artesanal 'Melzinho', integrada organicamente com sombras de contato e iluminação envolvente.
+        O produto central em destaque é a garrafa autêntica de '{brand_ref}', integrada organicamente com sombras de contato e iluminação envolvente.
         NÃO redesenhe ou altere o rótulo do produto, pois os detalhes visuais da garrafa serão preservados da foto de referência.
         """
     else:
-        prompt_sistema += """
-        No campo 'sugestao_prompt_imagem', crie uma descrição em INGLÊS para uma composição publicitária comercial de alto impacto (commercial social media advertising flyer poster) para a cachaça artesanal 'Melzinho'.
+        prompt_sistema += f"""
+        No campo 'sugestao_prompt_imagem', crie uma descrição em INGLÊS para uma composição publicitária comercial de alto impacto (commercial social media advertising flyer poster) para '{brand_ref}'.
         Descreva o cenário publicitário de estúdio, iluminação comercial quente e composição limpa e moderna.
         """
 
